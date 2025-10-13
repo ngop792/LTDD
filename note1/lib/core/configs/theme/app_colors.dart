@@ -13,4 +13,10 @@ class AppColors {
   static void setPrimary(Color color) {
     primary.value = color;
   }
+
+  // ✅ Thêm getter background
+  static Color background(BuildContext context) {
+    final brightness = Theme.of(context).brightness;
+    return brightness == Brightness.dark ? darkBackground : lightBackground;
+  }
 }

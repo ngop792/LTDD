@@ -1,10 +1,13 @@
 import 'package:flutter/material.dart';
+import 'package:get/get.dart';
 import 'package:note1/pretension/home/widgets/news_songs.dart';
 import 'package:note1/pretension/home/widgets/play_list.dart';
 import 'package:note1/domain/entities/simple_songs.dart';
 import 'package:note1/core/configs/assets/app_images.dart';
 import 'package:note1/core/configs/theme/app_colors.dart';
 import 'package:note1/pretension/settings/pages/settings_page.dart';
+import 'package:note1/pretension/upload/pages/upload_music_page.dart';
+import 'package:note1/pretension/search/pages/search_music_page.dart'; // ✅ thêm import tìm kiếm
 
 class HomePage extends StatefulWidget {
   const HomePage({super.key});
@@ -58,8 +61,11 @@ class _HomePageState extends State<HomePage>
 
   @override
   Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final isDark = theme.brightness == Brightness.dark;
+
     return Scaffold(
-      backgroundColor: Colors.grey.shade50,
+      backgroundColor: theme.colorScheme.surface,
       appBar: PreferredSize(
         preferredSize: const Size.fromHeight(70),
         child: SafeArea(
@@ -67,14 +73,15 @@ class _HomePageState extends State<HomePage>
             padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
             child: Container(
               decoration: BoxDecoration(
-                color: Colors.white,
+                color: theme.colorScheme.surface,
                 borderRadius: BorderRadius.circular(30),
                 boxShadow: [
-                  BoxShadow(
-                    color: Colors.black.withOpacity(0.05),
-                    blurRadius: 6,
-                    offset: const Offset(0, 2),
-                  ),
+                  if (!isDark)
+                    BoxShadow(
+                      color: Colors.black.withOpacity(0.05),
+                      blurRadius: 6,
+                      offset: const Offset(0, 2),
+                    ),
                 ],
               ),
               child: Padding(
@@ -89,8 +96,18 @@ class _HomePageState extends State<HomePage>
                     Align(
                       alignment: Alignment.centerLeft,
                       child: IconButton(
-                        icon: const Icon(Icons.search, color: Colors.black87),
-                        onPressed: () {},
+                        icon: Icon(
+                          Icons.search,
+                          color: theme.colorScheme.onSurface,
+                        ),
+                        onPressed: () {
+                          Navigator.push(
+                            context,
+                            MaterialPageRoute(
+                              builder: (context) => const SearchMusicPage(),
+                            ),
+                          );
+                        },
                       ),
                     ),
 
@@ -110,11 +127,19 @@ class _HomePageState extends State<HomePage>
                             clipBehavior: Clip.none,
                             children: [
                               IconButton(
-                                icon: const Icon(
+                                icon: Icon(
                                   Icons.upload_rounded,
-                                  color: Colors.black87,
+                                  color: theme.colorScheme.onSurface,
                                 ),
-                                onPressed: () {},
+                                onPressed: () {
+                                  Navigator.push(
+                                    context,
+                                    MaterialPageRoute(
+                                      builder: (context) =>
+                                          const UploadMusicPage(),
+                                    ),
+                                  );
+                                },
                               ),
                               Positioned(
                                 right: 8,
@@ -122,8 +147,8 @@ class _HomePageState extends State<HomePage>
                                 child: Container(
                                   height: 8,
                                   width: 8,
-                                  decoration: const BoxDecoration(
-                                    color: Colors.black,
+                                  decoration: BoxDecoration(
+                                    color: theme.colorScheme.primary,
                                     shape: BoxShape.circle,
                                   ),
                                 ),
@@ -134,10 +159,11 @@ class _HomePageState extends State<HomePage>
 
                           /// ⋮ PopupMenuButton
                           PopupMenuButton<int>(
-                            icon: const Icon(
+                            icon: Icon(
                               Icons.more_vert,
-                              color: Colors.black87,
+                              color: theme.colorScheme.onSurface,
                             ),
+                            color: theme.colorScheme.surface,
                             onSelected: (value) {
                               if (value == 2) {
                                 Navigator.push(
@@ -148,18 +174,18 @@ class _HomePageState extends State<HomePage>
                                 );
                               }
                             },
-                            itemBuilder: (context) => const [
+                            itemBuilder: (context) => [
                               PopupMenuItem<int>(
                                 value: 0,
-                                child: Text("Thêm vào playlist"),
+                                child: Text("Add_to_playlist".tr),
                               ),
                               PopupMenuItem<int>(
                                 value: 1,
-                                child: Text("Chia sẻ"),
+                                child: Text("Share".tr),
                               ),
                               PopupMenuItem<int>(
                                 value: 2,
-                                child: Text("Cài đặt"),
+                                child: Text("Setting".tr),
                               ),
                             ],
                           ),
@@ -224,6 +250,7 @@ class _HomePageState extends State<HomePage>
   }
 
   Widget _tabs() {
+    final theme = Theme.of(context);
     return ValueListenableBuilder<Color>(
       valueListenable: AppColors.primary,
       builder: (context, color, _) {
@@ -231,24 +258,26 @@ class _HomePageState extends State<HomePage>
           controller: _tabController,
           dividerColor: Colors.transparent,
           indicatorColor: color,
+          labelColor: theme.colorScheme.onSurface,
+          unselectedLabelColor: theme.colorScheme.onSurface.withOpacity(0.6),
           isScrollable: false,
           padding: const EdgeInsets.symmetric(vertical: 30, horizontal: 4),
-          tabs: const [
+          tabs: [
             Text(
-              'News',
-              style: TextStyle(fontWeight: FontWeight.w500, fontSize: 13),
+              'News'.tr,
+              style: const TextStyle(fontWeight: FontWeight.w500, fontSize: 13),
             ),
             Text(
-              'Category',
-              style: TextStyle(fontWeight: FontWeight.w500, fontSize: 13),
+              'Category'.tr,
+              style: const TextStyle(fontWeight: FontWeight.w500, fontSize: 13),
             ),
             Text(
-              'Artist',
-              style: TextStyle(fontWeight: FontWeight.w500, fontSize: 13),
+              'Artist'.tr,
+              style: const TextStyle(fontWeight: FontWeight.w500, fontSize: 13),
             ),
             Text(
-              'Radio',
-              style: TextStyle(fontWeight: FontWeight.w500, fontSize: 13),
+              'Radio'.tr,
+              style: const TextStyle(fontWeight: FontWeight.w500, fontSize: 13),
             ),
           ],
         );
