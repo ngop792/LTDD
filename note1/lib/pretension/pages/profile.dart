@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
+import 'package:get/get.dart';
 import 'package:note1/core/configs/theme/app_colors.dart';
+import 'package:note1/pretension/settings/bloc/settings_cubit.dart';
 
 class ProfilePage extends StatelessWidget {
   const ProfilePage({super.key});
@@ -33,7 +35,7 @@ class ProfilePage extends StatelessWidget {
                     ),
                     const SizedBox(height: 12),
                     Text(
-                      "",
+                      "", // TODO: tên người dùng sau này load từ API
                       style: TextStyle(
                         fontSize: 22,
                         fontWeight: FontWeight.bold,
@@ -42,7 +44,7 @@ class ProfilePage extends StatelessWidget {
                     ),
                     const SizedBox(height: 4),
                     Text(
-                      "0 playlists • 0 followers",
+                      "0 playlists • 0 followers".tr,
                       style: TextStyle(color: Colors.grey[600]),
                     ),
                   ],
@@ -52,23 +54,23 @@ class ProfilePage extends StatelessWidget {
               const SizedBox(height: 40),
 
               // 🔸 Phần playlist
-              _buildSectionTitle("Danh sách phát của bạn", textColor),
-              _buildPlaylistItem("Chill vibes", "50 bài hát"),
-              _buildPlaylistItem("Workout Mix", "30 bài hát"),
-              _buildPlaylistItem("Lo-fi Beats", "42 bài hát"),
+              _buildSectionTitle("your_playlists".tr, textColor),
+              _buildPlaylistItem("Chill vibes".tr, "50 songs".tr),
+              _buildPlaylistItem("Workout Mix".tr, "30 songs".tr),
+              _buildPlaylistItem("Lo-fi Beats".tr, "42 songs".tr),
 
               const SizedBox(height: 36),
 
               // 🔸 Phần cài đặt
-              _buildSectionTitle("Cài đặt", textColor),
+              _buildSectionTitle("settings".tr, textColor),
               _buildSettingItem(
                 icon: Icons.settings,
-                title: "Cài đặt ứng dụng",
+                title: "app_settings".tr,
                 onTap: () {},
               ),
               _buildSettingItem(
                 icon: Icons.lock_outline,
-                title: "Đổi mật khẩu",
+                title: "change_password".tr,
                 onTap: () {},
               ),
 
@@ -80,9 +82,9 @@ class ProfilePage extends StatelessWidget {
                   _showLogoutDialog(context);
                 },
                 icon: const Icon(Icons.logout, color: Colors.red),
-                label: const Text(
-                  "Đăng xuất",
-                  style: TextStyle(color: Colors.red),
+                label: Text(
+                  "logout".tr,
+                  style: const TextStyle(color: Colors.red),
                 ),
                 style: ElevatedButton.styleFrom(
                   backgroundColor: Colors.transparent,
@@ -159,19 +161,19 @@ class ProfilePage extends StatelessWidget {
     showDialog(
       context: context,
       builder: (_) => AlertDialog(
-        title: const Text("Xác nhận đăng xuất"),
-        content: const Text("Bạn có chắc chắn muốn đăng xuất không?"),
+        title: Text("confirm_logout".tr),
+        content: Text("logout_question".tr),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(context),
-            child: const Text("Hủy"),
+            child: Text("cancel".tr),
           ),
           TextButton(
             onPressed: () {
               Navigator.pop(context);
-              // TODO: Thêm logic đăng xuất ở đây
+              // TODO: logic đăng xuất sau này
             },
-            child: const Text("Đăng xuất", style: TextStyle(color: Colors.red)),
+            child: Text("logout".tr, style: const TextStyle(color: Colors.red)),
           ),
         ],
       ),

@@ -1,8 +1,12 @@
 import 'dart:io';
 import 'package:flutter/material.dart';
+import 'package:get/get.dart';
 import 'package:note1/common/widgets/appbar/app_bar.dart';
-import 'package:note1/pretension/page/edit_profile.dart';
 import 'package:note1/pretension/settings/pages/settings_page.dart';
+import 'package:note1/pretension/page/edit_profile.dart';
+import 'package:note1/pretension/auth/pages/signup_or_signin.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
+import 'package:note1/pretension/settings/bloc/settings_cubit.dart';
 
 class ProfilePage extends StatefulWidget {
   const ProfilePage({super.key});
@@ -16,36 +20,59 @@ class _ProfilePageState extends State<ProfilePage> {
   String bio = "0 người theo dõi • Đang theo dõi 3";
   String? avatarPath;
 
-  // 🔸 Hộp thoại xác nhận đăng xuất
+  // 🔸 Hộp thoại xác nhận đăng xuất (đa ngôn ngữ)
   void _showLogoutDialog(BuildContext context) {
     showDialog(
       context: context,
       builder: (_) => AlertDialog(
         backgroundColor: Colors.grey[900],
-        title: const Text(
-          "Xác nhận đăng xuất",
-          style: TextStyle(color: Colors.white),
+        title: Text(
+          "Xác nhận đăng xuất".tr,
+          style: const TextStyle(color: Colors.white),
         ),
-        content: const Text(
-          "Bạn có chắc chắn muốn đăng xuất không?",
-          style: TextStyle(color: Colors.white70),
+        content: Text(
+          "Bạn có chắc chắn muốn đăng xuất không?".tr,
+          style: const TextStyle(color: Colors.white70),
         ),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(context),
-            child: const Text("Hủy", style: TextStyle(color: Colors.white70)),
+            child: Text(
+              "Hủy".tr,
+              style: const TextStyle(color: Colors.white70),
+            ),
           ),
           TextButton(
-            onPressed: () {
+            onPressed: () async {
               Navigator.pop(context);
-              ScaffoldMessenger.of(
-                context,
-              ).showSnackBar(const SnackBar(content: Text("Đã đăng xuất")));
-              // TODO: thêm logic đăng xuất thật ở đây
+              final messenger = ScaffoldMessenger.of(context);
+              messenger.showSnackBar(
+                SnackBar(content: Text("Đang đăng xuất...".tr)),
+              );
+
+              try {
+                await Supabase.instance.client.auth.signOut();
+
+                if (context.mounted) {
+                  messenger.showSnackBar(
+                    SnackBar(content: Text("Đăng xuất thành công".tr)),
+                  );
+                  Navigator.of(context).pushAndRemoveUntil(
+                    MaterialPageRoute(
+                      builder: (_) => const SignupOrSigninPage(),
+                    ),
+                    (route) => false,
+                  );
+                }
+              } catch (e) {
+                messenger.showSnackBar(
+                  SnackBar(content: Text("Lỗi đăng xuất: $e")),
+                );
+              }
             },
-            child: const Text(
-              "Đăng xuất",
-              style: TextStyle(color: Colors.redAccent),
+            child: Text(
+              "Đăng xuất".tr,
+              style: const TextStyle(color: Colors.redAccent),
             ),
           ),
         ],
@@ -82,41 +109,46 @@ class _ProfilePageState extends State<ProfilePage> {
       backgroundColor: Colors.black,
       appBar: BasicAppbar(
         showBack: true,
-        // 🔸 Dấu ⋮ góc phải
         action: PopupMenuButton<int>(
           icon: const Icon(Icons.more_vert, color: Colors.white),
           color: Colors.grey[900],
           shape: RoundedRectangleBorder(
             borderRadius: BorderRadius.circular(12),
           ),
-          itemBuilder: (context) => const [
+          itemBuilder: (context) => [
             PopupMenuItem<int>(
               value: 0,
               child: Text(
-                "Thêm vào playlist",
-                style: TextStyle(color: Colors.white),
+                "Thêm vào playlist".tr,
+                style: const TextStyle(color: Colors.white),
               ),
             ),
             PopupMenuItem<int>(
               value: 1,
-              child: Text("Chia sẻ", style: TextStyle(color: Colors.white)),
+              child: Text(
+                "Chia sẻ".tr,
+                style: const TextStyle(color: Colors.white),
+              ),
             ),
             PopupMenuItem<int>(
               value: 2,
-              child: Text("Cài đặt", style: TextStyle(color: Colors.white)),
+              child: Text(
+                "Cài đặt".tr,
+                style: const TextStyle(color: Colors.white),
+              ),
             ),
           ],
           onSelected: (value) {
             switch (value) {
               case 0:
-                ScaffoldMessenger.of(context).showSnackBar(
-                  const SnackBar(content: Text("Thêm vào playlist")),
-                );
+                ScaffoldMessenger.of(
+                  context,
+                ).showSnackBar(SnackBar(content: Text("Thêm vào playlist".tr)));
                 break;
               case 1:
                 ScaffoldMessenger.of(
                   context,
-                ).showSnackBar(const SnackBar(content: Text("Đã chia sẻ")));
+                ).showSnackBar(SnackBar(content: Text("Đã chia sẻ".tr)));
                 break;
               case 2:
                 Navigator.push(
@@ -130,7 +162,6 @@ class _ProfilePageState extends State<ProfilePage> {
       ),
       body: Stack(
         children: [
-          // 🔹 Gradient nền phía trên
           Container(
             height: 280,
             decoration: const BoxDecoration(
@@ -141,15 +172,11 @@ class _ProfilePageState extends State<ProfilePage> {
               ),
             ),
           ),
-
-          // 🔹 Nội dung chính
           SafeArea(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 const SizedBox(height: 100),
-
-                // Avatar + Tên + Thông tin
                 Padding(
                   padding: const EdgeInsets.symmetric(horizontal: 20),
                   child: Row(
@@ -200,10 +227,7 @@ class _ProfilePageState extends State<ProfilePage> {
                     ],
                   ),
                 ),
-
                 const SizedBox(height: 20),
-
-                // 🔹 Nút chỉnh sửa + icon đăng xuất
                 Padding(
                   padding: const EdgeInsets.symmetric(horizontal: 20),
                   child: Row(
@@ -221,29 +245,29 @@ class _ProfilePageState extends State<ProfilePage> {
                           ),
                         ),
                         onPressed: () => _editProfile(context),
-                        child: const Text("Chỉnh sửa"),
+                        child: Text("Chỉnh sửa".tr),
                       ),
                       const SizedBox(width: 12),
                       IconButton(
                         onPressed: () => _showLogoutDialog(context),
                         icon: const Icon(Icons.logout, color: Colors.redAccent),
-                        tooltip: "Đăng xuất",
+                        tooltip: "Đăng xuất".tr,
                       ),
                     ],
                   ),
                 ),
-
                 const SizedBox(height: 30),
-
-                // 🔹 Phần hoạt động gần đây
                 Expanded(
                   child: Container(
                     width: double.infinity,
                     color: Colors.black,
-                    child: const Center(
+                    child: Center(
                       child: Text(
-                        "Không có hoạt động gần đây",
-                        style: TextStyle(color: Colors.white70, fontSize: 16),
+                        "Không có hoạt động gần đây".tr,
+                        style: const TextStyle(
+                          color: Colors.white70,
+                          fontSize: 16,
+                        ),
                       ),
                     ),
                   ),

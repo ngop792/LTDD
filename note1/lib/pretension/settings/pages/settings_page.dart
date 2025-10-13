@@ -1,7 +1,11 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:get/get.dart';
+import 'package:get_storage/get_storage.dart';
 import 'package:note1/pretension/choose_mode/bloc/theme_cubit.dart';
 import 'package:note1/pretension/settings/bloc/settings_cubit.dart';
+import 'package:note1/pretension/settings/pages/change_password_page.dart';
+import 'package:get/get.dart' as getx;
 
 class SettingsPage extends StatelessWidget {
   const SettingsPage({super.key});
@@ -19,6 +23,7 @@ class SettingsPage extends StatelessWidget {
     final settingsCubit = context.read<SettingsCubit>();
     final theme = Theme.of(context);
     final isDark = theme.brightness == Brightness.dark;
+    final box = GetStorage();
 
     return Scaffold(
       backgroundColor: theme.colorScheme.surface,
@@ -26,8 +31,6 @@ class SettingsPage extends StatelessWidget {
         backgroundColor: Colors.transparent,
         elevation: 0,
         centerTitle: true,
-        toolbarHeight: 56, // chiều cao AppBar
-        leadingWidth: 40, // giới hạn vùng leading
         leading: Padding(
           padding: const EdgeInsets.only(left: 8),
           child: Hero(
@@ -38,7 +41,7 @@ class SettingsPage extends StatelessWidget {
                 borderRadius: BorderRadius.circular(18),
                 onTap: () => Navigator.pop(context),
                 child: Container(
-                  width: 36, // kích thước vòng tròn
+                  width: 36,
                   height: 36,
                   decoration: BoxDecoration(
                     shape: BoxShape.circle,
@@ -46,7 +49,7 @@ class SettingsPage extends StatelessWidget {
                   ),
                   child: Icon(
                     Icons.arrow_back_ios_new_rounded,
-                    size: 16, // icon vừa vòng tròn
+                    size: 16,
                     color: isDark ? Colors.white : Colors.black87,
                   ),
                 ),
@@ -54,9 +57,9 @@ class SettingsPage extends StatelessWidget {
             ),
           ),
         ),
-        title: const Text(
-          "Cài đặt",
-          style: TextStyle(fontWeight: FontWeight.w600),
+        title: Text(
+          "settings".tr,
+          style: const TextStyle(fontWeight: FontWeight.w600),
         ),
       ),
       body: BlocBuilder<SettingsCubit, SettingsState>(
@@ -66,14 +69,14 @@ class SettingsPage extends StatelessWidget {
             children: [
               const SizedBox(height: 10),
 
-              _buildSectionHeader("Giao diện"),
+              _buildSectionHeader("appearance".tr),
               _buildCard(
                 context,
                 children: [
-                  // Ngôn ngữ
+                  // 🌍 Ngôn ngữ
                   ListTile(
                     leading: const Icon(Icons.language),
-                    title: const Text("Ngôn ngữ"),
+                    title: Text("language".tr),
                     trailing: DropdownButton<String>(
                       value: settings.language,
                       underline: const SizedBox(),
@@ -85,18 +88,30 @@ class SettingsPage extends StatelessWidget {
                         DropdownMenuItem(value: 'en', child: Text('English')),
                       ],
                       onChanged: (v) {
-                        if (v != null) settingsCubit.setLanguage(v);
+                        if (v != null) {
+                          settingsCubit.setLanguage(v);
+                          box.write('language', v);
+                          Get.updateLocale(Locale(v));
+                          Get.snackbar(
+                            'Language'.tr,
+                            v == 'en'
+                                ? 'Switched to English'.tr
+                                : 'Switched to Vietnamese'.tr,
+                            snackPosition: SnackPosition.BOTTOM,
+                            duration: const Duration(seconds: 2),
+                          );
+                        }
                       },
                     ),
                   ),
                   const Divider(height: 1),
 
-                  // Chế độ sáng / tối
+                  // 💡 Chế độ sáng/tối
                   BlocBuilder<ThemeCubit, ThemeMode>(
                     builder: (context, mode) {
                       return SwitchListTile(
                         secondary: const Icon(Icons.light_mode_outlined),
-                        title: const Text("Chế độ sáng"),
+                        title: Text("light_mode".tr),
                         value: mode == ThemeMode.light,
                         onChanged: (v) => themeCubit.setMode(
                           v ? ThemeMode.light : ThemeMode.dark,
@@ -106,10 +121,10 @@ class SettingsPage extends StatelessWidget {
                   ),
                   const Divider(height: 1),
 
-                  // Màu chủ đạo
+                  // 🎨 Màu chủ đạo
                   ListTile(
                     leading: const Icon(Icons.color_lens_outlined),
-                    title: const Text("Màu chủ đạo"),
+                    title: Text("accent_color".tr),
                     trailing: Row(
                       mainAxisSize: MainAxisSize.min,
                       children: List.generate(accentColors.length, (i) {
@@ -140,20 +155,26 @@ class SettingsPage extends StatelessWidget {
                   ),
                   const Divider(height: 1),
 
-                  // Cỡ chữ
+                  // 🔠 Cỡ chữ
                   ListTile(
                     leading: const Icon(Icons.text_fields_outlined),
-                    title: const Text("Cỡ chữ"),
+                    title: Text("font_size".tr),
                     trailing: DropdownButton<String>(
                       value: settings.fontSize,
                       underline: const SizedBox(),
-                      items: const [
-                        DropdownMenuItem(value: 'small', child: Text('Nhỏ')),
+                      items: [
+                        DropdownMenuItem(
+                          value: 'small',
+                          child: Text('small'.tr),
+                        ),
                         DropdownMenuItem(
                           value: 'normal',
-                          child: Text('Bình thường'),
+                          child: Text('normal'.tr),
                         ),
-                        DropdownMenuItem(value: 'large', child: Text('Lớn')),
+                        DropdownMenuItem(
+                          value: 'large',
+                          child: Text('large'.tr),
+                        ),
                       ],
                       onChanged: (v) {
                         if (v != null) settingsCubit.setFontSize(v);
@@ -164,33 +185,36 @@ class SettingsPage extends StatelessWidget {
               ),
 
               const SizedBox(height: 24),
-              _buildSectionHeader("Tài khoản & bảo mật"),
+              _buildSectionHeader("account_and_security".tr),
               _buildCard(
                 context,
                 children: [
+                  // 🔒 Đổi mật khẩu
                   ListTile(
                     leading: const Icon(Icons.lock_outline),
-                    title: const Text("Đổi mật khẩu"),
+                    title: Text("change_password".tr),
                     trailing: const Icon(
                       Icons.arrow_forward_ios_rounded,
                       size: 16,
                     ),
                     onTap: () {
-                      ScaffoldMessenger.of(context).showSnackBar(
-                        const SnackBar(content: Text("Chưa làm chức năng này")),
+                      Get.to(
+                        () => const ChangePasswordPage(),
+                        transition: getx.Transition.cupertino,
                       );
                     },
                   ),
                   const Divider(height: 1),
+                  // 📜 Chính sách bảo mật
                   ListTile(
                     leading: const Icon(Icons.privacy_tip_outlined),
-                    title: const Text("Điều lệ & Bảo mật"),
+                    title: Text("privacy_policy".tr),
                     trailing: const Icon(
                       Icons.arrow_forward_ios_rounded,
                       size: 16,
                     ),
                     onTap: () {
-                      // TODO: mở trang điều lệ & bảo mật
+                      Get.snackbar('Info', 'feature_not_ready'.tr);
                     },
                   ),
                 ],
@@ -199,7 +223,7 @@ class SettingsPage extends StatelessWidget {
 
               Center(
                 child: Text(
-                  "Phiên bản 1.0.0",
+                  "version".trParams({'ver': '1.0.0'}),
                   style: TextStyle(
                     color: isDark ? Colors.white54 : Colors.black54,
                     fontSize: 13,
@@ -214,7 +238,7 @@ class SettingsPage extends StatelessWidget {
     );
   }
 
-  // ===== Widget phụ trợ =====
+  // ===== Widget phụ =====
   Widget _buildSectionHeader(String title) => Padding(
     padding: const EdgeInsets.only(left: 4, bottom: 8),
     child: Text(

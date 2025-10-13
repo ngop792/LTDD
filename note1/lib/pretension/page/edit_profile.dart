@@ -1,5 +1,6 @@
 import 'dart:io';
 import 'package:flutter/material.dart';
+import 'package:get/get.dart';
 import 'package:image_picker/image_picker.dart';
 
 class EditProfilePage extends StatefulWidget {
@@ -42,11 +43,17 @@ class _EditProfilePageState extends State<EditProfilePage> {
 
   @override
   Widget build(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final bgColor = isDark ? Colors.black : Colors.white;
+    final textColor = isDark ? Colors.white : Colors.black87;
+
     return Scaffold(
-      backgroundColor: Colors.black,
+      backgroundColor: bgColor,
       appBar: AppBar(
-        title: const Text("Chỉnh sửa hồ sơ"),
-        backgroundColor: Colors.black,
+        title: Text('edit_profile'.tr), // 🔹 Đa ngôn ngữ
+        backgroundColor: bgColor,
+        foregroundColor: textColor,
+        elevation: 0,
       ),
       body: Padding(
         padding: const EdgeInsets.all(20),
@@ -62,10 +69,10 @@ class _EditProfilePageState extends State<EditProfilePage> {
                           ? FileImage(File(widget.currentAvatar!))
                           : null),
                 child: avatarFile == null && widget.currentAvatar == null
-                    ? const Icon(
+                    ? Icon(
                         Icons.camera_alt,
                         size: 40,
-                        color: Colors.white70,
+                        color: isDark ? Colors.white70 : Colors.black45,
                       )
                     : null,
               ),
@@ -73,19 +80,23 @@ class _EditProfilePageState extends State<EditProfilePage> {
             const SizedBox(height: 20),
             TextField(
               controller: nameController,
-              style: const TextStyle(color: Colors.white),
-              decoration: const InputDecoration(
-                labelText: "Tên hiển thị",
-                labelStyle: TextStyle(color: Colors.white70),
+              style: TextStyle(color: textColor),
+              decoration: InputDecoration(
+                labelText: 'display_name'.tr, // 🔹 Đa ngôn ngữ
+                labelStyle: TextStyle(
+                  color: isDark ? Colors.white70 : Colors.black54,
+                ),
               ),
             ),
             const SizedBox(height: 12),
             TextField(
               controller: bioController,
-              style: const TextStyle(color: Colors.white),
-              decoration: const InputDecoration(
-                labelText: "Mô tả ngắn",
-                labelStyle: TextStyle(color: Colors.white70),
+              style: TextStyle(color: textColor),
+              decoration: InputDecoration(
+                labelText: 'short_bio'.tr, // 🔹 Đa ngôn ngữ
+                labelStyle: TextStyle(
+                  color: isDark ? Colors.white70 : Colors.black54,
+                ),
               ),
             ),
             const Spacer(),
@@ -105,7 +116,7 @@ class _EditProfilePageState extends State<EditProfilePage> {
                   borderRadius: BorderRadius.circular(24),
                 ),
               ),
-              child: const Text("Lưu thay đổi"),
+              child: Text('save_changes'.tr), // 🔹 Đa ngôn ngữ
             ),
           ],
         ),

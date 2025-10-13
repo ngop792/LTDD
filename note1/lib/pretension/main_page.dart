@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:get/get.dart';
 import 'package:note1/pretension/home/pages/home.dart';
 import 'package:note1/pretension/pages/library.dart';
 import 'package:note1/pretension/page/profile.dart';
@@ -25,21 +26,21 @@ class _MainPageState extends State<MainPage> {
         selectedItemColor: AppColors.primary.value,
         unselectedItemColor: Colors.grey,
         type: BottomNavigationBarType.fixed,
-        items: const [
+        items: [
           BottomNavigationBarItem(
-            icon: Icon(Icons.home_outlined),
-            activeIcon: Icon(Icons.home),
-            label: 'Home',
+            icon: const Icon(Icons.home_outlined),
+            activeIcon: const Icon(Icons.home),
+            label: 'Home'.tr,
           ),
           BottomNavigationBarItem(
-            icon: Icon(Icons.library_music_outlined),
-            activeIcon: Icon(Icons.library_music),
-            label: 'Library',
+            icon: const Icon(Icons.library_music_outlined),
+            activeIcon: const Icon(Icons.library_music),
+            label: 'Library'.tr,
           ),
           BottomNavigationBarItem(
-            icon: Icon(Icons.person_outline),
-            activeIcon: Icon(Icons.person),
-            label: 'Profile',
+            icon: const Icon(Icons.person_outline),
+            activeIcon: const Icon(Icons.person),
+            label: 'Profile'.tr,
           ),
         ],
         onTap: (index) {
