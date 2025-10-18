@@ -130,6 +130,7 @@ class _LibraryPageState extends State<LibraryPage>
                                   id: DateTime.now().millisecondsSinceEpoch
                                       .toString(),
                                   name: nameController.text.trim(),
+                                  author: '',
                                 );
                                 setState(() => playlists.add(playlist));
                                 Navigator.pop(context);
