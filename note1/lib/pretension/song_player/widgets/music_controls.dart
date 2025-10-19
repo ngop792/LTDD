@@ -1,10 +1,13 @@
 import 'dart:async';
 import 'package:flutter/material.dart';
+import 'package:just_audio/just_audio.dart';
 import 'package:note1/core/configs/theme/app_colors.dart';
+import 'package:note1/domain/entities/simple_songs.dart';
 import 'package:note1/pretension/song_player/pages/music_player.dart';
 
 class MusicControls extends StatefulWidget {
-  const MusicControls({super.key});
+  final SimpleSong song;
+  const MusicControls({super.key, required this.song});
 
   @override
   State<MusicControls> createState() => _MusicControlsState();
@@ -14,23 +17,25 @@ class _MusicControlsState extends State<MusicControls>
     with SingleTickerProviderStateMixin {
   bool isPlaying = false;
   double progress = 0.0;
-  Duration total = const Duration(minutes: 4, seconds: 20);
+  Duration total = Duration.zero;
   Duration current = Duration.zero;
-
   bool isShuffle = false;
-  int repeatMode = 0; // 0 = off, 1 = all, 2 = one
+  int repeatMode = 0;
 
-  Timer? _timer;
+  late final MusicPlayer player;
+  late final AnimationController _playController;
+  late final Animation<double> _scaleAnimation;
 
-  late AnimationController _playController;
-  late Animation<double> _scaleAnimation;
+  StreamSubscription<Duration>? _posSub;
+  StreamSubscription<Duration?>? _durSub;
+  StreamSubscription<PlayerState>? _stateSub;
 
-  // ✅ dùng singleton player
-  final player = MusicPlayer.instance;
+  bool _isDragging = false; // 🔹 Trạng thái đang kéo thanh
 
   @override
   void initState() {
     super.initState();
+    player = MusicPlayer.instance;
 
     _playController = AnimationController(
       vsync: this,
@@ -40,16 +45,35 @@ class _MusicControlsState extends State<MusicControls>
       CurvedAnimation(parent: _playController, curve: Curves.easeInOut),
     );
 
-    // ✅ Đợi build xong rồi mới add listener để tránh lỗi build timing
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      player.addListener(_syncFromPlayer);
-      _syncFromPlayer(); // khởi tạo trạng thái ban đầu
+    _sync();
+    _listenStreams();
+  }
+
+  void _listenStreams() {
+    final audio = player.audioPlayer;
+
+    _posSub = audio.positionStream.listen((pos) {
+      if (!mounted || _isDragging) return;
+      setState(() {
+        current = pos;
+        progress = player.total > 0 ? pos.inSeconds / player.total : 0;
+      });
+    });
+
+    _durSub = audio.durationStream.listen((dur) {
+      if (!mounted) return;
+      if (dur != null) {
+        setState(() => total = dur);
+      }
+    });
+
+    _stateSub = audio.playerStateStream.listen((state) {
+      if (!mounted) return;
+      setState(() => isPlaying = state.playing);
     });
   }
 
-  // ✅ đồng bộ UI với player
-  void _syncFromPlayer() {
-    if (!mounted) return;
+  void _sync() {
     setState(() {
       isPlaying = player.isPlaying;
       progress = player.total > 0 ? player.current / player.total : 0;
@@ -60,41 +84,33 @@ class _MusicControlsState extends State<MusicControls>
     });
   }
 
-  void _togglePlay() {
-    if (isPlaying) {
-      _playController.reverse();
-    } else {
-      _playController.forward();
-    }
-    player.togglePlay();
+  @override
+  void dispose() {
+    _posSub?.cancel();
+    _durSub?.cancel();
+    _stateSub?.cancel();
+    _playController.dispose();
+    super.dispose();
   }
+
+  String _format(Duration d) =>
+      "${d.inMinutes.remainder(60).toString().padLeft(2, '0')}:${d.inSeconds.remainder(60).toString().padLeft(2, '0')}";
 
   void _toggleShuffle() {
     player.toggleShuffle();
+    setState(() => isShuffle = player.isShuffle);
   }
 
   void _toggleRepeat() {
     player.toggleRepeat();
-  }
-
-  @override
-  void dispose() {
-    _timer?.cancel();
-    _playController.dispose();
-    player.removeListener(_syncFromPlayer);
-    super.dispose();
-  }
-
-  String _formatDuration(Duration d) {
-    String twoDigits(int n) => n.toString().padLeft(2, "0");
-    return "${twoDigits(d.inMinutes)}:${twoDigits(d.inSeconds.remainder(60))}";
+    setState(() => repeatMode = player.repeatMode);
   }
 
   @override
   Widget build(BuildContext context) {
     return Column(
       children: [
-        // --- progress bar ---
+        // ===== Thanh tiến trình =====
         ValueListenableBuilder<Color>(
           valueListenable: AppColors.primary,
           builder: (context, color, _) {
@@ -104,121 +120,99 @@ class _MusicControlsState extends State<MusicControls>
               max: 1,
               activeColor: color,
               inactiveColor: Colors.grey.shade800,
-              onChanged: (value) {
+
+              // 🔹 Khi bắt đầu kéo
+              onChangeStart: (v) {
+                setState(() => _isDragging = true);
+              },
+
+              // 🔹 Khi đang kéo
+              onChanged: (v) {
                 setState(() {
-                  progress = value;
-                  current = Duration(
-                    seconds: (total.inSeconds * value).round(),
-                  );
+                  progress = v;
+                  current = Duration(seconds: (player.total * v).toInt());
                 });
-                player.seekFraction(value);
+              },
+
+              // 🔹 Khi thả tay
+              onChangeEnd: (v) {
+                setState(() => _isDragging = false);
+                player.seekFraction(v);
               },
             );
           },
         ),
-
-        // --- time display ---
         Padding(
           padding: const EdgeInsets.symmetric(horizontal: 20),
           child: Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              ValueListenableBuilder<Color>(
-                valueListenable: AppColors.primary,
-                builder: (context, color, _) => Text(
-                  _formatDuration(current),
-                  style: TextStyle(color: color),
-                ),
+              Text(
+                _format(current),
+                style: const TextStyle(color: Colors.white),
               ),
-              ValueListenableBuilder<Color>(
-                valueListenable: AppColors.primary,
-                builder: (context, color, _) => Text(
-                  _formatDuration(total),
-                  style: TextStyle(color: color),
-                ),
-              ),
+              Text(_format(total), style: const TextStyle(color: Colors.white)),
             ],
           ),
         ),
-
         const SizedBox(height: 20),
 
-        // --- main controls ---
+        // ===== Các nút điều khiển =====
         Row(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            // Shuffle
-            ValueListenableBuilder<Color>(
-              valueListenable: AppColors.primary,
-              builder: (context, color, _) => IconButton(
-                icon: AnimatedSwitcher(
-                  duration: const Duration(milliseconds: 300),
-                  child: Icon(
-                    Icons.shuffle,
-                    key: ValueKey(isShuffle),
-                    size: 28,
-                    color: isShuffle ? color : Colors.white,
-                  ),
-                ),
-                onPressed: _toggleShuffle,
+            IconButton(
+              icon: Icon(
+                Icons.shuffle,
+                color: isShuffle ? Colors.green : Colors.white,
               ),
+              onPressed: _toggleShuffle,
             ),
             const SizedBox(width: 10),
-
-            // Previous
             IconButton(
               icon: const Icon(Icons.skip_previous, size: 36),
-              onPressed: () {},
+              onPressed: () {
+                // TODO: thêm logic prev nếu cần
+              },
             ),
             const SizedBox(width: 10),
-
-            // Play/Pause (hiệu ứng đồng bộ)
             ScaleTransition(
               scale: _scaleAnimation,
-              child: ValueListenableBuilder<Color>(
-                valueListenable: AppColors.primary,
-                builder: (context, color, _) => IconButton(
-                  icon: AnimatedSwitcher(
-                    duration: const Duration(milliseconds: 300),
-                    transitionBuilder: (child, anim) =>
-                        ScaleTransition(scale: anim, child: child),
-                    child: Icon(
-                      isPlaying
-                          ? Icons.pause_circle_filled
-                          : Icons.play_circle_fill,
-                      key: ValueKey(isPlaying),
-                      size: 64,
-                      color: color,
-                    ),
-                  ),
-                  onPressed: _togglePlay,
+              child: IconButton(
+                icon: Icon(
+                  isPlaying
+                      ? Icons.pause_circle_filled
+                      : Icons.play_circle_fill,
+                  size: 64,
+                  color: Colors.green,
                 ),
+                onPressed: () async {
+                  if (isPlaying) {
+                    player.pause();
+                    _playController.reverse();
+                  } else {
+                    debugPrint("🎵 Phát từ URL: ${widget.song.audioUrl}");
+                    await player.playSong(widget.song.audioUrl);
+                    _playController.forward();
+                  }
+                  setState(() => isPlaying = player.isPlaying);
+                },
               ),
             ),
             const SizedBox(width: 10),
-
-            // Next
             IconButton(
               icon: const Icon(Icons.skip_next, size: 36),
-              onPressed: () {},
+              onPressed: () {
+                // TODO: thêm logic next nếu cần
+              },
             ),
             const SizedBox(width: 10),
-
-            // Repeat
-            ValueListenableBuilder<Color>(
-              valueListenable: AppColors.primary,
-              builder: (context, color, _) => IconButton(
-                icon: AnimatedSwitcher(
-                  duration: const Duration(milliseconds: 300),
-                  child: Icon(
-                    repeatMode == 2 ? Icons.repeat_one : Icons.repeat,
-                    key: ValueKey(repeatMode),
-                    size: 28,
-                    color: repeatMode == 0 ? Colors.white : color,
-                  ),
-                ),
-                onPressed: _toggleRepeat,
+            IconButton(
+              icon: Icon(
+                repeatMode == 2 ? Icons.repeat_one : Icons.repeat,
+                color: repeatMode == 0 ? Colors.white : Colors.green,
               ),
+              onPressed: _toggleRepeat,
             ),
           ],
         ),

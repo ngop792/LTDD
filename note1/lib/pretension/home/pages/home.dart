@@ -7,7 +7,8 @@ import 'package:note1/core/configs/assets/app_images.dart';
 import 'package:note1/core/configs/theme/app_colors.dart';
 import 'package:note1/pretension/settings/pages/settings_page.dart';
 import 'package:note1/pretension/upload/pages/upload_music_page.dart';
-import 'package:note1/pretension/search/pages/search_music_page.dart'; // ✅ thêm import tìm kiếm
+import 'package:note1/pretension/search/pages/search_music_page.dart';
+import 'package:note1/services/song_service.dart';
 
 class HomePage extends StatefulWidget {
   const HomePage({super.key});
@@ -20,37 +21,34 @@ class _HomePageState extends State<HomePage>
     with SingleTickerProviderStateMixin {
   late TabController _tabController;
 
-  final List<SimpleSong> sampleSongs = [
-    SimpleSong(
-      title: "As It Was",
-      artist: "Harry Styles",
-      duration: 333,
-      imageUrl: AppImages.b1,
-    ),
-    SimpleSong(
-      title: "God Did",
-      artist: "DJ Khaled",
-      duration: 223,
-      imageUrl: AppImages.b1,
-    ),
-    SimpleSong(
-      title: "Heat Waves",
-      artist: "Glass Animals",
-      duration: 238,
-      imageUrl: AppImages.b1,
-    ),
-    SimpleSong(
-      title: "STAY",
-      artist: "The Kid LAROI & Justin Bieber",
-      duration: 141,
-      imageUrl: AppImages.b1,
-    ),
-  ];
+  final SongService _songService = SongService(); // ✅ gọi API từ Laravel
+  List<dynamic> songsFromApi = [];
+  bool isLoading = true;
+
+  // ✅ Cấu hình IP server Laravel của bạn
+  static const String baseUrl = 'http://192.168.0.106:8000';
 
   @override
   void initState() {
     super.initState();
     _tabController = TabController(length: 4, vsync: this);
+    loadSongsFromApi();
+  }
+
+  Future<void> loadSongsFromApi() async {
+    try {
+      final data = await _songService.fetchSongs();
+      setState(() {
+        songsFromApi = data;
+        isLoading = false;
+      });
+
+      // ✅ In ra dữ liệu để kiểm tra
+      print('🎵 Dữ liệu bài hát từ API: $songsFromApi');
+    } catch (e) {
+      print('❌ Lỗi khi tải bài hát: $e');
+      setState(() => isLoading = false);
+    }
   }
 
   @override
@@ -92,7 +90,7 @@ class _HomePageState extends State<HomePage>
                 child: Stack(
                   alignment: Alignment.center,
                   children: [
-                    /// 🔍 Nút search bên trái
+                    /// 🔍 Nút search
                     Align(
                       alignment: Alignment.centerLeft,
                       child: IconButton(
@@ -117,7 +115,7 @@ class _HomePageState extends State<HomePage>
                       child: Image.asset(AppImages.logo, height: 32, width: 32),
                     ),
 
-                    /// 📤 Upload + ⋮ bên phải
+                    /// 📤 Upload + ⋮ more
                     Align(
                       alignment: Alignment.centerRight,
                       child: Row(
@@ -157,7 +155,7 @@ class _HomePageState extends State<HomePage>
                           ),
                           const SizedBox(width: 4),
 
-                          /// ⋮ PopupMenuButton
+                          /// ⋮ Menu
                           PopupMenuButton<int>(
                             icon: Icon(
                               Icons.more_vert,
@@ -218,7 +216,35 @@ class _HomePageState extends State<HomePage>
               ),
             ),
             const SizedBox(height: 10),
-            PlayList(songs: sampleSongs),
+
+            // ✅ Hiển thị danh sách bài hát thật
+            isLoading
+                ? const Center(child: CircularProgressIndicator())
+                : PlayList(
+                    songs: songsFromApi.isNotEmpty
+                        ? songsFromApi.map((song) {
+                            // 🔥 Lấy trực tiếp từ Laravel API
+                            final fullAudioUrl =
+                                (song['url'] as String?)?.replaceFirst(
+                                  '127.0.0.1',
+                                  '192.168.0.106',
+                                ) ??
+                                '';
+                            final title = song['title'] ?? 'Không có tiêu đề';
+
+                            return SimpleSong(
+                              title: title,
+                              artist:
+                                  'Không rõ', // nếu Laravel chưa có trường artist
+                              duration: 200,
+                              imageUrl:
+                                  AppImages.b1, // có thể đổi sau nếu bạn có ảnh
+                              audioUrl: fullAudioUrl,
+                            );
+                          }).toList()
+                        : [],
+                  ),
+
             const SizedBox(height: 50),
           ],
         ),

@@ -18,121 +18,117 @@ class PlayList extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    if (songs.isEmpty) {
+      return const Padding(
+        padding: EdgeInsets.all(16),
+        child: Center(
+          child: Text(
+            "Không có bài hát nào",
+            style: TextStyle(color: Colors.grey),
+          ),
+        ),
+      );
+    }
+
     return SingleChildScrollView(
       padding: const EdgeInsets.only(bottom: 20),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          // ===== PLAYLIST SECTION =====
-          Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 5),
-            child: Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: const [
-                Text(
-                  "Playlist",
-                  style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
-                ),
-                Text(
-                  "Xem thêm",
-                  style: TextStyle(fontSize: 14, color: Colors.black54),
-                ),
-              ],
-            ),
-          ),
+          _sectionTitle("Playlist"),
           _songs(context, songs),
 
           const SizedBox(height: 24),
-
-          // ===== GỢI Ý CHO BẠN =====
-          _buildSectionTitle("Gợi ý cho bạn"),
-          _buildSongList(context, songs),
+          _sectionTitle("Gợi ý cho bạn"),
+          _horizontalSongList(context, songs),
 
           const SizedBox(height: 24),
-
-          // ===== ALBUM NỔI BẬT =====
-          _buildSectionTitle("Album nổi bật"),
-          _buildHorizontalAlbums(context, songs),
+          _sectionTitle("Album nổi bật"),
+          _horizontalAlbums(context, songs),
         ],
       ),
     );
   }
 
-  // ===== DANH SÁCH BÀI HÁT =====
+  Widget _sectionTitle(String title) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 5),
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+        children: [
+          Text(
+            title,
+            style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+          ),
+          const Text(
+            "Xem thêm",
+            style: TextStyle(fontSize: 14, color: Colors.black54),
+          ),
+        ],
+      ),
+    );
+  }
+
+  // ===== DANH SÁCH PLAYLIST =====
   Widget _songs(BuildContext context, List<SimpleSong> songs) {
     return ListView.separated(
       shrinkWrap: true,
       physics: const NeverScrollableScrollPhysics(),
       itemCount: songs.length,
-      separatorBuilder: (context, index) => const SizedBox(height: 20),
+      separatorBuilder: (context, index) => const SizedBox(height: 16),
       itemBuilder: (context, index) {
         final song = songs[index];
         final formattedDuration = _formatDuration(song.duration);
 
-        return Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 16),
-          child: InkWell(
-            borderRadius: BorderRadius.circular(12),
-            onTap: () {
-              Navigator.push(
-                context,
-                MaterialPageRoute(
-                  builder: (context) => SongPlayerPage(song: song),
-                ),
-              );
-            },
+        return InkWell(
+          borderRadius: BorderRadius.circular(12),
+          onTap: () {
+            Navigator.push(
+              context,
+              MaterialPageRoute(
+                builder: (context) => SongPlayerPage(song: song),
+              ),
+            );
+          },
+          child: Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 16),
             child: Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
-                Row(
-                  children: [
-                    ClipRRect(
-                      borderRadius: BorderRadius.circular(8),
-                      child: Image.asset(
-                        song.imageUrl,
-                        height: 45,
-                        width: 45,
-                        fit: BoxFit.cover,
+                _songImage(song.imageUrl),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        song.title,
+                        style: const TextStyle(
+                          fontWeight: FontWeight.bold,
+                          fontSize: 15,
+                        ),
+                        overflow: TextOverflow.ellipsis,
                       ),
-                    ),
-                    const SizedBox(width: 12),
-                    Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          song.title,
-                          style: const TextStyle(
-                            fontWeight: FontWeight.bold,
-                            fontSize: 15,
-                          ),
+                      Text(
+                        song.artist,
+                        style: const TextStyle(
+                          fontSize: 13,
+                          color: Colors.black54,
                         ),
-                        Text(
-                          song.artist,
-                          style: const TextStyle(
-                            fontSize: 13,
-                            color: Colors.black54,
-                          ),
-                        ),
-                      ],
-                    ),
-                  ],
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                    ],
+                  ),
                 ),
-                Row(
-                  children: [
-                    Text(
-                      formattedDuration,
-                      style: const TextStyle(
-                        fontSize: 14,
-                        color: Colors.black54,
-                      ),
-                    ),
-                    const SizedBox(width: 25),
-                    const Icon(
-                      Icons.favorite_border,
-                      color: Colors.black54,
-                      size: 20,
-                    ),
-                  ],
+                const SizedBox(width: 10),
+                Text(
+                  formattedDuration,
+                  style: const TextStyle(color: Colors.black54, fontSize: 14),
+                ),
+                const SizedBox(width: 10),
+                const Icon(
+                  Icons.favorite_border,
+                  color: Colors.black54,
+                  size: 20,
                 ),
               ],
             ),
@@ -142,19 +138,8 @@ class PlayList extends StatelessWidget {
     );
   }
 
-  // ===== TIÊU ĐỀ PHẦN =====
-  Widget _buildSectionTitle(String title) {
-    return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 16),
-      child: Text(
-        title,
-        style: const TextStyle(fontSize: 18, fontWeight: FontWeight.w600),
-      ),
-    );
-  }
-
-  // ===== GỢI Ý BÀI HÁT (NGANG) =====
-  Widget _buildSongList(BuildContext context, List<SimpleSong> songs) {
+  // ===== GỢI Ý BÀI HÁT =====
+  Widget _horizontalSongList(BuildContext context, List<SimpleSong> songs) {
     return SizedBox(
       height: 160,
       child: ListView.builder(
@@ -178,15 +163,7 @@ class PlayList extends StatelessWidget {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  ClipRRect(
-                    borderRadius: BorderRadius.circular(12),
-                    child: Image.asset(
-                      song.imageUrl,
-                      height: 100,
-                      width: 130,
-                      fit: BoxFit.cover,
-                    ),
-                  ),
+                  _songImage(song.imageUrl, height: 100, width: 130),
                   const SizedBox(height: 8),
                   Text(
                     song.title,
@@ -209,8 +186,8 @@ class PlayList extends StatelessWidget {
     );
   }
 
-  // ===== ALBUM NỔI BẬT (NGANG) =====
-  Widget _buildHorizontalAlbums(BuildContext context, List<SimpleSong> songs) {
+  // ===== ALBUM NGANG =====
+  Widget _horizontalAlbums(BuildContext context, List<SimpleSong> songs) {
     return SizedBox(
       height: 170,
       child: ListView.builder(
@@ -234,7 +211,7 @@ class PlayList extends StatelessWidget {
               decoration: BoxDecoration(
                 borderRadius: BorderRadius.circular(16),
                 image: DecorationImage(
-                  image: AssetImage(song.imageUrl),
+                  image: _getImageProvider(song.imageUrl),
                   fit: BoxFit.cover,
                 ),
               ),
@@ -263,5 +240,37 @@ class PlayList extends StatelessWidget {
         },
       ),
     );
+  }
+
+  // ===== HỖ TRỢ LOAD ẢNH (asset hoặc URL) =====
+  Widget _songImage(String path, {double height = 45, double width = 45}) {
+    final isNetwork = path.startsWith('http');
+    return ClipRRect(
+      borderRadius: BorderRadius.circular(8),
+      child: isNetwork
+          ? Image.network(
+              path,
+              height: height,
+              width: width,
+              fit: BoxFit.cover,
+              errorBuilder: (context, error, stackTrace) {
+                return Container(
+                  height: height,
+                  width: width,
+                  color: Colors.grey.shade300,
+                  child: const Icon(Icons.music_note, color: Colors.white),
+                );
+              },
+            )
+          : Image.asset(path, height: height, width: width, fit: BoxFit.cover),
+    );
+  }
+
+  ImageProvider _getImageProvider(String path) {
+    if (path.startsWith('http')) {
+      return NetworkImage(path);
+    } else {
+      return AssetImage(path);
+    }
   }
 }

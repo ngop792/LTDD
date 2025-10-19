@@ -9,36 +9,42 @@ final List<SimpleSong> dummySongs = [
     artist: "Billie Eilish , Khalid",
     duration: 200,
     imageUrl: "assets/images/song_1.png",
+    audioUrl: "https://www.example.com/lovely.mp3",
   ),
   SimpleSong(
     title: "One Kiss",
     artist: "Calvin Harris , Dua Lipa",
     duration: 210,
     imageUrl: "assets/images/song_2.png",
+    audioUrl: "https://www.example.com/lovely.mp3",
   ),
   SimpleSong(
     title: "Banner song",
     artist: "Unknown Artist",
     duration: 180,
     imageUrl: "assets/images/song_3.png",
+    audioUrl: "https://www.example.com/lovely.mp3",
   ),
   SimpleSong(
     title: "Shape Of You",
     artist: "Unknown Artist",
     duration: 180,
     imageUrl: "assets/images/song_4.png",
+    audioUrl: "https://www.example.com/lovely.mp3",
   ),
   SimpleSong(
     title: "Tonight",
     artist: "Unknown Artist",
     duration: 180,
     imageUrl: "assets/images/song_5.png",
+    audioUrl: "https://www.example.com/lovely.mp3",
   ),
   SimpleSong(
     title: "Dinamond",
     artist: "Unknown Artist",
     duration: 180,
     imageUrl: "assets/images/song_6.png",
+    audioUrl: "https://www.example.com/lovely.mp3",
   ),
 ];
 
