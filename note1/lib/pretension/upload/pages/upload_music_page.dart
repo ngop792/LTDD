@@ -142,6 +142,15 @@ class _UploadMusicPageState extends State<UploadMusicPage> {
         title: const Text("Tải nhạc lên"),
         backgroundColor: theme.colorScheme.surface,
         centerTitle: true,
+        // THÊM: Sử dụng `leading` để thay thế nút back mặc định
+        leading: IconButton(
+          // Icon chevron left, giống như trong hình
+          icon: const Icon(Icons.chevron_left, size: 30),
+          onPressed: () {
+            // Sử dụng Get.back() vì ứng dụng đang dùng thư viện GetX
+            Get.back();
+          },
+        ),
       ),
       body: Padding(
         padding: const EdgeInsets.all(24.0),

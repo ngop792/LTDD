@@ -108,7 +108,8 @@ class _ProfilePageState extends State<ProfilePage> {
       extendBodyBehindAppBar: true,
       backgroundColor: Colors.black,
       appBar: BasicAppbar(
-        showBack: true,
+        // THAY ĐỔI: Đặt showBack thành false để xóa nút trở về
+        showBack: false,
         action: PopupMenuButton<int>(
           icon: const Icon(Icons.more_vert, color: Colors.white),
           color: Colors.grey[900],

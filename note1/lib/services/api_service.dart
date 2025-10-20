@@ -8,7 +8,7 @@ class ApiService {
   /// ⚙️ Cấu hình IP
   /// Emulator: http://10.0.2.2:8000/api
   /// Device thật: http://192.168.x.x:8000/api
-  static const String baseUrl = "http://192.168.0.106:8000/api";
+  static const String baseUrl = "http://192.168.0.105:8000/api";
 
   /// Upload file từ điện thoại
   static Future<bool> uploadSong(String title, String filePath) async {

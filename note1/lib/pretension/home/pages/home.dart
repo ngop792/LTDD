@@ -111,7 +111,7 @@ class _HomePageState extends State<HomePage>
 
                     /// 🌀 Logo giữa
                     Positioned(
-                      left: 135,
+                      left: 190,
                       child: Image.asset(AppImages.logo, height: 32, width: 32),
                     ),
 
@@ -224,12 +224,14 @@ class _HomePageState extends State<HomePage>
                     songs: songsFromApi.isNotEmpty
                         ? songsFromApi.map((song) {
                             // 🔥 Lấy trực tiếp từ Laravel API
-                            final fullAudioUrl =
-                                (song['url'] as String?)?.replaceFirst(
-                                  '127.0.0.1',
-                                  '192.168.0.106',
-                                ) ??
-                                '';
+                            final fullAudioUrl = Uri.encodeFull(
+                              (song['url'] as String?)?.replaceFirst(
+                                    '10.0.2.2',
+                                    '192.168.0.105',
+                                  ) ??
+                                  '',
+                            );
+
                             final title = song['title'] ?? 'Không có tiêu đề';
 
                             return SimpleSong(

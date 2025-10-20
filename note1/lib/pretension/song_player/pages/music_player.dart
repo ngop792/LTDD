@@ -1,22 +1,25 @@
+import 'dart:async';
+import 'dart:io';
 import 'package:flutter/foundation.dart';
 import 'package:just_audio/just_audio.dart';
-import 'dart:async';
+import 'package:path_provider/path_provider.dart';
+import 'package:http/http.dart' as http;
 
 class MusicPlayer extends ChangeNotifier {
-  // Singleton pattern để dùng chung 1 trình phát toàn app
+  // Singleton
   MusicPlayer._internal();
   static final MusicPlayer instance = MusicPlayer._internal();
 
   final AudioPlayer _audioPlayer = AudioPlayer();
 
-  // ====== TRẠNG THÁI PHÁT ======
+  // ====== Trạng thái phát ======
   bool _isPlaying = false;
   double _current = 0.0;
   double _total = 0.0;
   bool _isShuffle = false;
   int _repeatMode = 0; // 0 = off, 1 = all, 2 = one
 
-  // ====== GETTERS ======
+  // ====== Getters ======
   bool get isPlaying => _isPlaying;
   double get current => _current;
   double get total => _total;
@@ -24,21 +27,41 @@ class MusicPlayer extends ChangeNotifier {
   int get repeatMode => _repeatMode;
   AudioPlayer get audioPlayer => _audioPlayer;
 
+  // ====== Stream Subscriptions ======
   StreamSubscription<Duration>? _positionSub;
   StreamSubscription<Duration?>? _durationSub;
   StreamSubscription<PlayerState>? _stateSub;
 
   // =====================================================
-  // ✅ PHÁT BÀI HÁT TỪ URL
+  // ✅ Phát nhạc từ URL hoặc CSDL
   // =====================================================
-  Future<void> playSong(String url) async {
+  Future<void> playSong(String url, {String? filename}) async {
     try {
-      // Hủy đăng ký stream cũ (tránh nhân đôi listener)
+      // Hủy stream cũ
       await _cancelStreams();
-
       await _audioPlayer.stop();
 
-      final duration = await _audioPlayer.setUrl(url);
+      // Kiểm tra HTTP/HTTPS
+      if (url.startsWith('http://')) {
+        if (kDebugMode) {
+          print(
+            "⚠️ URL sử dụng HTTP không mã hóa. "
+            "Android 9+ cần android:usesCleartextTraffic=\"true\" hoặc network_security_config.",
+          );
+        }
+      }
+
+      // Download file về local nếu filename được cung cấp
+      String path = url;
+      if (filename != null) {
+        path = await _downloadFile(url, filename);
+        if (kDebugMode) print("🎵 File đã tải về: $path");
+      }
+
+      // Set file path hoặc URL
+      final duration = filename != null
+          ? await _audioPlayer.setFilePath(path)
+          : await _audioPlayer.setUrl(url);
 
       if (duration == null) {
         if (kDebugMode) print("⚠️ Không thể tải bài hát từ: $url");
@@ -50,18 +73,38 @@ class MusicPlayer extends ChangeNotifier {
       _isPlaying = true;
 
       await _audioPlayer.play();
-
       _listenStreams();
 
       notifyListeners();
       if (kDebugMode) print("🎵 Đang phát: $url");
     } catch (e) {
-      if (kDebugMode) print("❌ Lỗi khi phát nhạc: $e");
+      if (kDebugMode) {
+        print("❌ Lỗi khi phát nhạc: $e");
+        if (e.toString().contains("Cleartext")) {
+          print(
+            "⚠️ Lỗi Cleartext HTTP traffic. "
+            "Hãy bật usesCleartextTraffic=true hoặc dùng HTTPS.",
+          );
+        }
+      }
     }
   }
 
   // =====================================================
-  // ✅ LẮNG NGHE STREAMS
+  // ✅ Tải file về local
+  // =====================================================
+  Future<String> _downloadFile(String url, String filename) async {
+    final response = await http.get(Uri.parse(url));
+    if (response.statusCode != 200) throw Exception('Không tải được file');
+
+    final dir = await getApplicationDocumentsDirectory();
+    final file = File('${dir.path}/$filename.mp3');
+    await file.writeAsBytes(response.bodyBytes);
+    return file.path;
+  }
+
+  // =====================================================
+  // ✅ Lắng nghe streams
   // =====================================================
   void _listenStreams() {
     _positionSub = _audioPlayer.positionStream.listen((pos) {
@@ -80,6 +123,16 @@ class MusicPlayer extends ChangeNotifier {
       _isPlaying = state.playing;
       notifyListeners();
     });
+
+    // Optional: debug event stream
+    _audioPlayer.playbackEventStream.listen(
+      (event) {
+        if (kDebugMode) print("Event: $event");
+      },
+      onError: (e, st) {
+        if (kDebugMode) print("Playback error: $e");
+      },
+    );
   }
 
   Future<void> _cancelStreams() async {
@@ -89,7 +142,7 @@ class MusicPlayer extends ChangeNotifier {
   }
 
   // =====================================================
-  // ✅ PHÁT / TẠM DỪNG / TIẾP TỤC
+  // ✅ Play / Pause / Resume
   // =====================================================
   void togglePlay() {
     if (_isPlaying) {
@@ -112,7 +165,7 @@ class MusicPlayer extends ChangeNotifier {
   }
 
   // =====================================================
-  // ✅ SEEK BẰNG TỈ LỆ THANH TRƯỢT (0.0 – 1.0)
+  // ✅ Seek
   // =====================================================
   void seekFraction(double fraction) {
     if (_total <= 0) return;
@@ -122,9 +175,6 @@ class MusicPlayer extends ChangeNotifier {
     notifyListeners();
   }
 
-  // =====================================================
-  // ✅ TUA NHẠC THEO GIÂY
-  // =====================================================
   Future<void> setCurrentSeconds(double seconds) async {
     if (_total <= 0) return;
     try {
@@ -138,7 +188,7 @@ class MusicPlayer extends ChangeNotifier {
   }
 
   // =====================================================
-  // ✅ NGẪU NHIÊN / LẶP LẠI
+  // ✅ Shuffle / Repeat
   // =====================================================
   void toggleShuffle() {
     _isShuffle = !_isShuffle;
@@ -148,18 +198,16 @@ class MusicPlayer extends ChangeNotifier {
 
   void toggleRepeat() {
     _repeatMode = (_repeatMode + 1) % 3;
-
     _audioPlayer.setLoopMode(
       _repeatMode == 2
           ? LoopMode.one
           : (_repeatMode == 1 ? LoopMode.all : LoopMode.off),
     );
-
     notifyListeners();
   }
 
   // =====================================================
-  // ✅ GIẢI PHÓNG TÀI NGUYÊN
+  // ✅ Dispose
   // =====================================================
   @override
   void dispose() {
