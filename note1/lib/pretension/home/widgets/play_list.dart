@@ -1,11 +1,22 @@
+import 'dart:async';
 import 'package:flutter/material.dart';
+import 'package:get/get.dart'; // ✅ cần cho .tr
+import 'package:just_audio/just_audio.dart';
 import 'package:note1/domain/entities/simple_songs.dart';
 import 'package:note1/pretension/song_player/pages/song_player.dart';
 
-class PlayList extends StatelessWidget {
+class PlayList extends StatefulWidget {
   final List<SimpleSong> songs;
+  final bool showPlaylist;
 
-  const PlayList({super.key, required this.songs});
+  const PlayList({super.key, required this.songs, this.showPlaylist = true});
+
+  @override
+  State<PlayList> createState() => _PlayListState();
+}
+
+class _PlayListState extends State<PlayList> {
+  bool showAll = false;
 
   String _formatDuration(num durationInSeconds) {
     if (durationInSeconds < 0) return "0:00";
@@ -16,145 +27,225 @@ class PlayList extends StatelessWidget {
     return "$minutes:$secondsString";
   }
 
+  /// ✅ Hàm này giúp lấy duration thật của file nhạc
+  Future<Duration?> _getSongDuration(String path) async {
+    try {
+      final player = AudioPlayer();
+      final completer = Completer<Duration?>();
+
+      await player.setUrl(path).then((_) {
+        final duration = player.duration;
+        if (duration != null) {
+          completer.complete(duration);
+        } else {
+          player.durationStream.firstWhere((d) => d != null).then((d) {
+            completer.complete(d);
+          });
+        }
+      });
+
+      final result = await completer.future.timeout(
+        const Duration(seconds: 5),
+        onTimeout: () => null,
+      );
+
+      await player.dispose();
+      return result;
+    } catch (e) {
+      return null;
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
+    final songs = widget.songs;
+    final theme = Theme.of(context);
+
+    final textColor = theme.colorScheme.onBackground;
+    final secondaryColor = theme.colorScheme.onBackground.withOpacity(0.6);
+    final backgroundColor = theme.colorScheme.surface;
+
+    if (songs.isEmpty) {
+      return Padding(
+        padding: const EdgeInsets.all(16),
+        child: Center(
+          child: Text(
+            "no_songs".tr, // ✅ Không có bài hát nào
+            style: TextStyle(color: secondaryColor),
+          ),
+        ),
+      );
+    }
+
+    final displaySongs = showAll
+        ? songs
+        : songs.length > 4
+        ? songs.sublist(0, 4)
+        : songs;
+
     return SingleChildScrollView(
       padding: const EdgeInsets.only(bottom: 20),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          // ===== PLAYLIST SECTION =====
-          Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 5),
-            child: Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: const [
-                Text(
-                  "Playlist",
-                  style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+      child: Container(
+        color: backgroundColor,
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            if (widget.showPlaylist && songs.isNotEmpty) ...[
+              Padding(
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 16,
+                  vertical: 5,
                 ),
-                Text(
-                  "Xem thêm",
-                  style: TextStyle(fontSize: 14, color: Colors.black54),
+                child: Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    Text(
+                      "songs".tr, // ✅ Bài hát
+                      style: TextStyle(
+                        fontSize: 18,
+                        fontWeight: FontWeight.bold,
+                        color: textColor,
+                      ),
+                    ),
+                    if (songs.length > 4)
+                      GestureDetector(
+                        onTap: () {
+                          setState(() {
+                            showAll = !showAll;
+                          });
+                        },
+                        child: Text(
+                          showAll
+                              ? "collapse".tr
+                              : "see_more".tr, // ✅ Thu gọn / Xem thêm
+                          style: TextStyle(
+                            fontSize: 14,
+                            color: theme.colorScheme.primary,
+                            fontWeight: FontWeight.w500,
+                          ),
+                        ),
+                      ),
+                  ],
                 ),
-              ],
-            ),
-          ),
-          _songs(context, songs),
-
-          const SizedBox(height: 24),
-
-          // ===== GỢI Ý CHO BẠN =====
-          _buildSectionTitle("Gợi ý cho bạn"),
-          _buildSongList(context, songs),
-
-          const SizedBox(height: 24),
-
-          // ===== ALBUM NỔI BẬT =====
-          _buildSectionTitle("Album nổi bật"),
-          _buildHorizontalAlbums(context, songs),
-        ],
+              ),
+              _songs(context, displaySongs, textColor, secondaryColor),
+              const SizedBox(height: 24),
+            ],
+            _sectionTitle("suggest_for_you".tr, textColor), // ✅ Gợi ý cho bạn
+            _horizontalSongList(context, songs, textColor, secondaryColor),
+            const SizedBox(height: 24),
+            _sectionTitle("featured_album".tr, textColor), // ✅ Album nổi bật
+            _horizontalAlbums(context, songs),
+          ],
+        ),
       ),
     );
   }
 
-  // ===== DANH SÁCH BÀI HÁT =====
-  Widget _songs(BuildContext context, List<SimpleSong> songs) {
+  Widget _sectionTitle(String title, Color textColor) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 5),
+      child: Text(
+        title,
+        style: TextStyle(
+          fontSize: 18,
+          fontWeight: FontWeight.bold,
+          color: textColor,
+        ),
+      ),
+    );
+  }
+
+  Widget _songs(
+    BuildContext context,
+    List<SimpleSong> songs,
+    Color textColor,
+    Color secondaryColor,
+  ) {
     return ListView.separated(
       shrinkWrap: true,
       physics: const NeverScrollableScrollPhysics(),
       itemCount: songs.length,
-      separatorBuilder: (context, index) => const SizedBox(height: 20),
+      separatorBuilder: (context, index) => const SizedBox(height: 16),
       itemBuilder: (context, index) {
         final song = songs[index];
-        final formattedDuration = _formatDuration(song.duration);
 
-        return Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 16),
-          child: InkWell(
-            borderRadius: BorderRadius.circular(12),
-            onTap: () {
-              Navigator.push(
-                context,
-                MaterialPageRoute(
-                  builder: (context) => SongPlayerPage(song: song),
-                ),
-              );
-            },
-            child: Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
-                Row(
+        return FutureBuilder<Duration?>(
+          future: _getSongDuration(song.audioUrl),
+          builder: (context, snapshot) {
+            final duration = snapshot.data?.inSeconds ?? song.duration;
+            final formattedDuration = _formatDuration(duration);
+
+            return InkWell(
+              borderRadius: BorderRadius.circular(12),
+              onTap: () {
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                    builder: (context) => SongPlayerPage(
+                      playlist: widget.songs,
+                      initialIndex: index,
+                    ),
+                  ),
+                );
+              },
+              child: Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 16),
+                child: Row(
                   children: [
-                    ClipRRect(
-                      borderRadius: BorderRadius.circular(8),
-                      child: Image.asset(
-                        song.imageUrl,
-                        height: 45,
-                        width: 45,
-                        fit: BoxFit.cover,
+                    _songImage(song.imageUrl),
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            song.title,
+                            style: TextStyle(
+                              fontWeight: FontWeight.bold,
+                              fontSize: 15,
+                              color: textColor,
+                            ),
+                            overflow: TextOverflow.ellipsis,
+                          ),
+                          Text(
+                            song.artist,
+                            style: TextStyle(
+                              fontSize: 13,
+                              color: secondaryColor,
+                            ),
+                            overflow: TextOverflow.ellipsis,
+                          ),
+                        ],
                       ),
                     ),
-                    const SizedBox(width: 12),
-                    Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          song.title,
-                          style: const TextStyle(
-                            fontWeight: FontWeight.bold,
-                            fontSize: 15,
-                          ),
-                        ),
-                        Text(
-                          song.artist,
-                          style: const TextStyle(
-                            fontSize: 13,
-                            color: Colors.black54,
-                          ),
-                        ),
-                      ],
-                    ),
-                  ],
-                ),
-                Row(
-                  children: [
+                    const SizedBox(width: 10),
                     Text(
                       formattedDuration,
-                      style: const TextStyle(
-                        fontSize: 14,
-                        color: Colors.black54,
-                      ),
+                      style: TextStyle(color: secondaryColor, fontSize: 14),
                     ),
-                    const SizedBox(width: 25),
-                    const Icon(
+                    const SizedBox(width: 10),
+                    Icon(
                       Icons.favorite_border,
-                      color: Colors.black54,
+                      color: secondaryColor,
                       size: 20,
                     ),
                   ],
                 ),
-              ],
-            ),
-          ),
+              ),
+            );
+          },
         );
       },
     );
   }
 
-  // ===== TIÊU ĐỀ PHẦN =====
-  Widget _buildSectionTitle(String title) {
-    return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 16),
-      child: Text(
-        title,
-        style: const TextStyle(fontSize: 18, fontWeight: FontWeight.w600),
-      ),
-    );
-  }
-
-  // ===== GỢI Ý BÀI HÁT (NGANG) =====
-  Widget _buildSongList(BuildContext context, List<SimpleSong> songs) {
+  Widget _horizontalSongList(
+    BuildContext context,
+    List<SimpleSong> songs,
+    Color textColor,
+    Color secondaryColor,
+  ) {
     return SizedBox(
       height: 160,
       child: ListView.builder(
@@ -168,7 +259,8 @@ class PlayList extends StatelessWidget {
               Navigator.push(
                 context,
                 MaterialPageRoute(
-                  builder: (context) => SongPlayerPage(song: song),
+                  builder: (context) =>
+                      SongPlayerPage(playlist: songs, initialIndex: index),
                 ),
               );
             },
@@ -178,27 +270,22 @@ class PlayList extends StatelessWidget {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  ClipRRect(
-                    borderRadius: BorderRadius.circular(12),
-                    child: Image.asset(
-                      song.imageUrl,
-                      height: 100,
-                      width: 130,
-                      fit: BoxFit.cover,
-                    ),
-                  ),
+                  _songImage(song.imageUrl, height: 100, width: 130),
                   const SizedBox(height: 8),
                   Text(
                     song.title,
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,
-                    style: const TextStyle(fontWeight: FontWeight.w600),
+                    style: TextStyle(
+                      fontWeight: FontWeight.w600,
+                      color: textColor,
+                    ),
                   ),
                   Text(
                     song.artist,
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,
-                    style: const TextStyle(color: Colors.black54, fontSize: 12),
+                    style: TextStyle(color: secondaryColor, fontSize: 12),
                   ),
                 ],
               ),
@@ -209,8 +296,7 @@ class PlayList extends StatelessWidget {
     );
   }
 
-  // ===== ALBUM NỔI BẬT (NGANG) =====
-  Widget _buildHorizontalAlbums(BuildContext context, List<SimpleSong> songs) {
+  Widget _horizontalAlbums(BuildContext context, List<SimpleSong> songs) {
     return SizedBox(
       height: 170,
       child: ListView.builder(
@@ -224,7 +310,8 @@ class PlayList extends StatelessWidget {
               Navigator.push(
                 context,
                 MaterialPageRoute(
-                  builder: (context) => SongPlayerPage(song: song),
+                  builder: (context) =>
+                      SongPlayerPage(playlist: songs, initialIndex: index),
                 ),
               );
             },
@@ -234,7 +321,7 @@ class PlayList extends StatelessWidget {
               decoration: BoxDecoration(
                 borderRadius: BorderRadius.circular(16),
                 image: DecorationImage(
-                  image: AssetImage(song.imageUrl),
+                  image: _getImageProvider(song.imageUrl),
                   fit: BoxFit.cover,
                 ),
               ),
@@ -263,5 +350,36 @@ class PlayList extends StatelessWidget {
         },
       ),
     );
+  }
+
+  Widget _songImage(String path, {double height = 45, double width = 45}) {
+    final isNetwork = path.startsWith('http');
+    return ClipRRect(
+      borderRadius: BorderRadius.circular(8),
+      child: isNetwork
+          ? Image.network(
+              path,
+              height: height,
+              width: width,
+              fit: BoxFit.cover,
+              errorBuilder: (context, error, stackTrace) {
+                return Container(
+                  height: height,
+                  width: width,
+                  color: Colors.grey.shade300,
+                  child: const Icon(Icons.music_note, color: Colors.white),
+                );
+              },
+            )
+          : Image.asset(path, height: height, width: width, fit: BoxFit.cover),
+    );
+  }
+
+  ImageProvider _getImageProvider(String path) {
+    if (path.startsWith('http')) {
+      return NetworkImage(path);
+    } else {
+      return AssetImage(path);
+    }
   }
 }

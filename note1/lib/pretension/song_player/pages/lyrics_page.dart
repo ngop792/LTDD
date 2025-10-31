@@ -27,16 +27,13 @@ class LyricPage extends StatefulWidget {
 class _LyricPageState extends State<LyricPage> with TickerProviderStateMixin {
   late ScrollController _scrollController;
   late AnimationController _rotationController;
-  late AnimationController _glowController;
   late AnimationController _playController;
   late Animation<double> _scaleAnimation;
 
   final MusicPlayer player = MusicPlayer.instance;
 
-  Timer? _localTimerForScroll;
-  late VoidCallback _playerListener;
-
-  bool isFavorite = false; // ✅ Thêm biến để quản lý trái tim
+  Timer? _scrollTimer;
+  bool isFavorite = false;
 
   @override
   void initState() {
@@ -46,58 +43,41 @@ class _LyricPageState extends State<LyricPage> with TickerProviderStateMixin {
     _rotationController = AnimationController(
       vsync: this,
       duration: const Duration(seconds: 25),
-    )..repeat();
-
-    _glowController = AnimationController(
-      vsync: this,
-      duration: const Duration(seconds: 2),
-    )..repeat(reverse: true);
+    );
 
     _playController = AnimationController(
       vsync: this,
-      duration: const Duration(milliseconds: 200),
+      duration: const Duration(milliseconds: 250),
     );
-    _scaleAnimation = Tween<double>(begin: 1.0, end: 1.15).animate(
+    _scaleAnimation = Tween<double>(begin: 1.0, end: 1.1).animate(
       CurvedAnimation(parent: _playController, curve: Curves.easeInOut),
     );
 
-    _playerListener = () {
-      if (mounted) setState(() {});
-    };
-    player.addListener(_playerListener);
-
-    player.setTotal(const Duration(minutes: 4, seconds: 20));
-
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      _scrollToCurrentLyric();
-    });
+    player.addListener(_onPlayerStateChanged);
   }
 
-  void _scrollToCurrentLyric() {
-    if (widget.currentIndex < widget.lyrics.length &&
-        _scrollController.hasClients) {
-      _scrollController.animateTo(
-        widget.currentIndex * 50.0,
-        duration: const Duration(milliseconds: 600),
-        curve: Curves.easeInOut,
-      );
+  void _onPlayerStateChanged() {
+    if (mounted) setState(() {});
+    if (player.isPlaying) {
+      if (!_rotationController.isAnimating) _rotationController.repeat();
+    } else {
+      _rotationController.stop();
     }
   }
 
   @override
   void dispose() {
+    player.removeListener(_onPlayerStateChanged);
     _rotationController.dispose();
-    _glowController.dispose();
     _playController.dispose();
-    _localTimerForScroll?.cancel();
     _scrollController.dispose();
-    player.removeListener(_playerListener);
+    _scrollTimer?.cancel();
     super.dispose();
   }
 
   String _formatDuration(double seconds) {
-    int minutes = (seconds ~/ 60);
-    int secs = (seconds % 60).toInt();
+    final minutes = (seconds ~/ 60);
+    final secs = (seconds % 60).toInt();
     return "$minutes:${secs.toString().padLeft(2, '0')}";
   }
 
@@ -117,38 +97,29 @@ class _LyricPageState extends State<LyricPage> with TickerProviderStateMixin {
   @override
   Widget build(BuildContext context) {
     final isNetworkImage =
-        widget.imageUrl.isNotEmpty && widget.imageUrl.startsWith("http");
-
-    if (player.isPlaying) {
-      if (!_rotationController.isAnimating) _rotationController.repeat();
-    } else {
-      if (_rotationController.isAnimating) _rotationController.stop();
-    }
+        widget.imageUrl.isNotEmpty && widget.imageUrl.startsWith('http');
 
     return Scaffold(
       extendBodyBehindAppBar: true,
       appBar: AppBar(
         backgroundColor: Colors.transparent,
         elevation: 0,
-        leading: Padding(
-          padding: const EdgeInsets.only(left: 8),
-          child: IconButton(
-            icon: const Icon(Icons.arrow_back_ios_new, color: Colors.white),
-            onPressed: () => Navigator.pop(context),
-          ),
+        leading: IconButton(
+          icon: const Icon(Icons.arrow_back_ios_new, color: Colors.white),
+          onPressed: () => Navigator.pop(context),
         ),
-        centerTitle: true,
         title: Text(
           widget.songTitle,
           style: const TextStyle(
             color: Colors.white,
             fontWeight: FontWeight.bold,
-            fontSize: 18,
           ),
         ),
+        centerTitle: true,
       ),
       body: Stack(
         children: [
+          /// --- ẢNH NỀN ---
           Positioned.fill(
             child: isNetworkImage
                 ? Image.network(widget.imageUrl, fit: BoxFit.cover)
@@ -157,6 +128,7 @@ class _LyricPageState extends State<LyricPage> with TickerProviderStateMixin {
                       : Container(color: Colors.black)),
           ),
 
+          /// --- LỚP MỜ ---
           Positioned.fill(
             child: Container(
               decoration: const BoxDecoration(
@@ -169,6 +141,7 @@ class _LyricPageState extends State<LyricPage> with TickerProviderStateMixin {
             ),
           ),
 
+          /// --- VÒNG ĐĨA XOAY ---
           Center(
             child: AnimatedBuilder(
               animation: _rotationController,
@@ -177,291 +150,193 @@ class _LyricPageState extends State<LyricPage> with TickerProviderStateMixin {
                 child: child,
               ),
               child: Opacity(
-                opacity: 0.12,
+                opacity: 0.15,
                 child: ClipOval(
                   child: isNetworkImage
                       ? Image.network(
                           widget.imageUrl,
-                          width: 260,
-                          height: 260,
+                          width: 240,
+                          height: 240,
                           fit: BoxFit.cover,
                         )
                       : (widget.imageUrl.isNotEmpty
                             ? Image.asset(
                                 widget.imageUrl,
-                                width: 260,
-                                height: 260,
+                                width: 240,
+                                height: 240,
                                 fit: BoxFit.cover,
                               )
-                            : const SizedBox(width: 260, height: 260)),
+                            : const SizedBox(width: 240, height: 240)),
                 ),
               ),
             ),
           ),
 
-          AnimatedBuilder(
-            animation: player,
-            builder: (context, _) {
-              return ListView.builder(
-                controller: _scrollController,
-                padding: const EdgeInsets.symmetric(
-                  vertical: 120,
-                  horizontal: 20,
+          /// --- LỜI BÀI HÁT ---
+          ListView.builder(
+            controller: _scrollController,
+            padding: const EdgeInsets.only(top: 120, bottom: 220),
+            itemCount: widget.lyrics.length,
+            itemBuilder: (context, index) {
+              final isActive = index == widget.currentIndex;
+              return AnimatedDefaultTextStyle(
+                duration: const Duration(milliseconds: 300),
+                style: TextStyle(
+                  fontSize: isActive ? 22 : 16,
+                  color: isActive ? Colors.greenAccent : Colors.white70,
+                  fontWeight: isActive ? FontWeight.bold : FontWeight.normal,
                 ),
-                itemCount: widget.lyrics.length,
-                itemBuilder: (context, index) {
-                  final isActive = index == widget.currentIndex;
-                  return AnimatedDefaultTextStyle(
-                    duration: const Duration(milliseconds: 300),
-                    curve: Curves.easeInOut,
-                    style: TextStyle(
-                      fontSize: isActive ? 22 : 16,
-                      fontWeight: isActive
-                          ? FontWeight.bold
-                          : FontWeight.normal,
-                      color: isActive ? Colors.greenAccent : Colors.white70,
-                      shadows: isActive
-                          ? [
-                              const Shadow(
-                                blurRadius: 8,
-                                color: Colors.greenAccent,
-                              ),
-                            ]
-                          : [],
+                child: Center(
+                  child: Padding(
+                    padding: const EdgeInsets.symmetric(vertical: 8.0),
+                    child: Text(
+                      widget.lyrics[index],
+                      textAlign: TextAlign.center,
                     ),
-                    child: AnimatedScale(
-                      scale: isActive ? 1.15 : 1.0,
-                      duration: const Duration(milliseconds: 300),
-                      child: Padding(
-                        padding: const EdgeInsets.symmetric(vertical: 8.0),
-                        child: Text(
-                          widget.lyrics[index],
-                          textAlign: TextAlign.center,
-                        ),
-                      ),
-                    ),
-                  );
-                },
+                  ),
+                ),
               );
             },
           ),
 
+          /// --- THANH ĐIỀU KHIỂN DƯỚI ---
           Align(
             alignment: Alignment.bottomCenter,
-            child: AnimatedBuilder(
-              animation: player,
-              builder: (context, _) {
-                return Container(
-                  padding: const EdgeInsets.fromLTRB(16, 14, 16, 30),
-                  decoration: const BoxDecoration(
-                    color: Colors.white,
-                    borderRadius: BorderRadius.vertical(
-                      top: Radius.circular(30),
-                    ),
-                  ),
-                  child: SafeArea(
-                    top: false,
-                    child: Column(
-                      mainAxisSize: MainAxisSize.min,
+            child: Container(
+              padding: const EdgeInsets.fromLTRB(16, 12, 16, 30),
+              decoration: const BoxDecoration(
+                color: Colors.white,
+                borderRadius: BorderRadius.vertical(top: Radius.circular(28)),
+              ),
+              child: SafeArea(
+                top: false,
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    /// --- Tiêu đề + Trái tim ---
+                    Row(
                       children: [
-                        Row(
-                          children: [
-                            ClipOval(
-                              child: isNetworkImage
-                                  ? Image.network(
-                                      widget.imageUrl,
-                                      width: 50,
-                                      height: 50,
-                                      fit: BoxFit.cover,
-                                    )
-                                  : (widget.imageUrl.isNotEmpty
-                                        ? Image.asset(
-                                            widget.imageUrl,
-                                            width: 50,
-                                            height: 50,
-                                            fit: BoxFit.cover,
-                                          )
-                                        : Container(
-                                            width: 50,
-                                            height: 50,
-                                            color: Colors.grey.shade300,
-                                          )),
-                            ),
-                            const SizedBox(width: 12),
-                            Expanded(
-                              child: Column(
-                                crossAxisAlignment: CrossAxisAlignment.start,
-                                children: [
-                                  Text(
-                                    widget.songTitle,
-                                    style: const TextStyle(
-                                      fontWeight: FontWeight.bold,
-                                    ),
-                                  ),
-                                  Text(
-                                    widget.artist,
-                                    style: const TextStyle(color: Colors.grey),
-                                  ),
-                                ],
-                              ),
-                            ),
-                            // ✅ Sửa đúng phần này
-                            ValueListenableBuilder<Color>(
-                              valueListenable: AppColors.primary,
-                              builder: (context, color, _) => AnimatedScale(
-                                duration: const Duration(milliseconds: 200),
-                                scale: 1.0,
-                                child: IconButton(
-                                  icon: Icon(
-                                    isFavorite
-                                        ? Icons.favorite
-                                        : Icons.favorite_border,
-                                    color: isFavorite
-                                        ? Colors.redAccent
-                                        : Colors.grey.shade600,
-                                  ),
-                                  onPressed: () {
-                                    setState(() {
-                                      isFavorite = !isFavorite;
-                                    });
-                                  },
-                                ),
-                              ),
-                            ),
-                          ],
+                        ClipRRect(
+                          borderRadius: BorderRadius.circular(12),
+                          child: isNetworkImage
+                              ? Image.network(
+                                  widget.imageUrl,
+                                  width: 50,
+                                  height: 50,
+                                  fit: BoxFit.cover,
+                                )
+                              : (widget.imageUrl.isNotEmpty
+                                    ? Image.asset(
+                                        widget.imageUrl,
+                                        width: 50,
+                                        height: 50,
+                                        fit: BoxFit.cover,
+                                      )
+                                    : Container(
+                                        width: 50,
+                                        height: 50,
+                                        color: Colors.grey.shade300,
+                                      )),
                         ),
-
-                        const SizedBox(height: 10),
-
-                        Column(
-                          children: [
-                            Slider(
-                              value: player.current.clamp(0.0, player.total),
-                              min: 0,
-                              max: player.total > 0 ? player.total : 1,
-                              activeColor: Colors.green,
-                              inactiveColor: Colors.grey.shade300,
-                              onChanged: (v) => player.setCurrentSeconds(v),
-                            ),
-                            Row(
-                              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                              children: [
-                                Text(
-                                  _formatDuration(player.current),
-                                  style: const TextStyle(
-                                    color: Colors.grey,
-                                    fontSize: 12,
-                                  ),
+                        const SizedBox(width: 10),
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(
+                                widget.songTitle,
+                                style: const TextStyle(
+                                  fontWeight: FontWeight.bold,
                                 ),
-                                Text(
-                                  _formatDuration(player.total),
-                                  style: const TextStyle(
-                                    color: Colors.grey,
-                                    fontSize: 12,
-                                  ),
-                                ),
-                              ],
-                            ),
-                          ],
+                              ),
+                              Text(
+                                widget.artist,
+                                style: const TextStyle(color: Colors.grey),
+                              ),
+                            ],
+                          ),
                         ),
-
-                        const SizedBox(height: 12),
-
-                        Row(
-                          mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-                          children: [
-                            ValueListenableBuilder<Color>(
-                              valueListenable: AppColors.primary,
-                              builder: (context, color, _) => IconButton(
-                                icon: AnimatedSwitcher(
-                                  duration: const Duration(milliseconds: 250),
-                                  child: Icon(
-                                    Icons.shuffle,
-                                    key: ValueKey(player.isShuffle),
-                                    color: player.isShuffle
-                                        ? color
-                                        : Colors.grey.shade600,
-                                    size: 28,
-                                  ),
-                                ),
-                                onPressed: () => player.toggleShuffle(),
-                              ),
-                            ),
-
-                            const Icon(Icons.skip_previous, size: 36),
-
-                            ScaleTransition(
-                              scale: _scaleAnimation,
-                              child: ValueListenableBuilder<Color>(
-                                valueListenable: AppColors.primary,
-                                builder: (context, color, _) => IconButton(
-                                  icon: AnimatedSwitcher(
-                                    duration: const Duration(milliseconds: 300),
-                                    transitionBuilder: (child, anim) =>
-                                        ScaleTransition(
-                                          scale: anim,
-                                          child: child,
-                                        ),
-                                    child: Icon(
-                                      isPlaying
-                                          ? Icons.pause_circle_filled
-                                          : Icons.play_circle_fill,
-                                      key: ValueKey(isPlaying),
-                                      size: 64,
-                                      color: color,
-                                    ),
-                                  ),
-                                  onPressed: _togglePlay,
-                                ),
-                              ),
-                            ),
-
-                            const Icon(Icons.skip_next, size: 36),
-
-                            ValueListenableBuilder<Color>(
-                              valueListenable: AppColors.primary,
-                              builder: (context, color, _) {
-                                final activeColor = player.repeatMode == 0
-                                    ? Colors.grey.shade600
-                                    : color;
-                                return IconButton(
-                                  onPressed: () => player.toggleRepeat(),
-                                  icon: AnimatedSwitcher(
-                                    duration: const Duration(milliseconds: 250),
-                                    child: Stack(
-                                      alignment: Alignment.center,
-                                      key: ValueKey(player.repeatMode),
-                                      children: [
-                                        Icon(
-                                          Icons.repeat,
-                                          color: activeColor,
-                                          size: 28,
-                                        ),
-                                        if (player.repeatMode == 2)
-                                          Positioned(
-                                            bottom: 6,
-                                            child: Text(
-                                              "1",
-                                              style: TextStyle(
-                                                color: activeColor,
-                                                fontSize: 11,
-                                                fontWeight: FontWeight.bold,
-                                              ),
-                                            ),
-                                          ),
-                                      ],
-                                    ),
-                                  ),
-                                );
-                              },
-                            ),
-                          ],
+                        IconButton(
+                          icon: Icon(
+                            isFavorite ? Icons.favorite : Icons.favorite_border,
+                            color: isFavorite ? Colors.redAccent : Colors.grey,
+                          ),
+                          onPressed: () =>
+                              setState(() => isFavorite = !isFavorite),
                         ),
                       ],
                     ),
-                  ),
-                );
-              },
+
+                    /// --- Thanh tiến trình ---
+                    Slider(
+                      value: player.current.clamp(0.0, player.total),
+                      min: 0,
+                      max: player.total > 0 ? player.total : 1,
+                      activeColor: Colors.green,
+                      inactiveColor: Colors.grey.shade300,
+                      onChanged: (v) => player.setCurrentSeconds(v),
+                    ),
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        Text(
+                          _formatDuration(player.current),
+                          style: const TextStyle(color: Colors.grey),
+                        ),
+                        Text(
+                          _formatDuration(player.total),
+                          style: const TextStyle(color: Colors.grey),
+                        ),
+                      ],
+                    ),
+
+                    /// --- Nút điều khiển ---
+                    const SizedBox(height: 10),
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                      children: [
+                        IconButton(
+                          icon: Icon(
+                            Icons.shuffle,
+                            color: player.isShuffle
+                                ? Colors.green
+                                : Colors.grey,
+                          ),
+                          onPressed: () => player.toggleShuffle(),
+                        ),
+                        const Icon(Icons.skip_previous, size: 36),
+                        ScaleTransition(
+                          scale: _scaleAnimation,
+                          child: IconButton(
+                            icon: Icon(
+                              isPlaying
+                                  ? Icons.pause_circle_filled
+                                  : Icons.play_circle_fill,
+                              size: 64,
+                              color: Colors.green,
+                            ),
+                            onPressed: _togglePlay,
+                          ),
+                        ),
+                        const Icon(Icons.skip_next, size: 36),
+                        IconButton(
+                          icon: Icon(
+                            player.repeatMode == 0
+                                ? Icons.repeat
+                                : (player.repeatMode == 1
+                                      ? Icons.repeat_one
+                                      : Icons.repeat_on),
+                            color: player.repeatMode == 0
+                                ? Colors.grey
+                                : Colors.green,
+                          ),
+                          onPressed: () => player.toggleRepeat(),
+                        ),
+                      ],
+                    ),
+                  ],
+                ),
+              ),
             ),
           ),
         ],

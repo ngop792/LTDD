@@ -27,7 +27,22 @@ class AppImages {
   static const String song_5 = '${basePath}song_5.png';
   static const String song_6 = '${basePath}song_6.png';
 
+  static const String s1 = '${basePath}s1.jpg';
+  static const String s2 = '${basePath}s2.jpg';
+  static const String s3 = '${basePath}s3.jpg';
+  static const String s4 = '${basePath}s4.jpg';
+  static const String s5 = '${basePath}s5.jpg';
+  static const String s6 = '${basePath}s6.jpg';
+  static const String defaultPlaylistCover =
+      'assets/images/default_playlist_cover.png'; // <--- Thêm dòng này
+
   static const String b1 = '${basePath}b1.png';
 
   static get cat => null;
+
+  static const String rock = '${basePath}rock.jpg';
+  static const String jazz = '${basePath}jazz.jpg';
+  static const String hiphop = '${basePath}hiphop.jpg';
+  static const String classical = '${basePath}classical.jpg';
+  static const String pop = '${basePath}pop.jpg';
 }

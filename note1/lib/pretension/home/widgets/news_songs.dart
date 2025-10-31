@@ -9,36 +9,48 @@ final List<SimpleSong> dummySongs = [
     artist: "Billie Eilish , Khalid",
     duration: 200,
     imageUrl: "assets/images/song_1.png",
+    audioUrl:
+        "https://firebasestorage.googleapis.com/v0/b/spotify0101.appspot.com/o/songs%2FBillie%20Eilish%20%2C%20Khalid%20-%20lovely.mp3?alt=media&token=6d5d70c6-a801-4661-9df3-5ac2cad8670a",
   ),
   SimpleSong(
     title: "One Kiss",
     artist: "Calvin Harris , Dua Lipa",
     duration: 210,
     imageUrl: "assets/images/song_2.png",
+    audioUrl:
+        "https://firebasestorage.googleapis.com/v0/b/spotify0101.appspot.com/o/songs%2FCalvin%20Harris%20%2C%20Dua%20Lipa%20%20-%20One%20Kiss.mp3?alt=media&token=bb0e4aab-6597-466e-aba1-cc69a92f83c7",
   ),
   SimpleSong(
     title: "Banner song",
     artist: "Unknown Artist",
     duration: 180,
     imageUrl: "assets/images/song_3.png",
+    audioUrl:
+        "https://firebasestorage.googleapis.com/v0/b/spotify0101.appspot.com/o/songs%2FDrake%20-%20In%20My%20Feelings.mp3?alt=media&token=bc04d185-3883-49b3-8f4c-f34de98b04dd",
   ),
   SimpleSong(
     title: "Shape Of You",
     artist: "Unknown Artist",
     duration: 180,
     imageUrl: "assets/images/song_4.png",
+    audioUrl:
+        "https://firebasestorage.googleapis.com/v0/b/spotify0101.appspot.com/o/songs%2FEd%20Sheeran%20-%20Shape%20Of%20You.mp3?alt=media&token=ce82f2f6-f744-4629-8338-7d04085892fb",
   ),
   SimpleSong(
     title: "Tonight",
     artist: "Unknown Artist",
     duration: 180,
     imageUrl: "assets/images/song_5.png",
+    audioUrl:
+        "https://firebasestorage.googleapis.com/v0/b/spotify0101.appspot.com/o/songs%2FEnrique%20Iglesias%20-%20Tonight.mp3?alt=media&token=a61c9ded-ba46-406a-a26f-9120898464ab",
   ),
   SimpleSong(
     title: "Dinamond",
     artist: "Unknown Artist",
     duration: 180,
     imageUrl: "assets/images/song_6.png",
+    audioUrl:
+        "https://firebasestorage.googleapis.com/v0/b/spotify0101.appspot.com/o/songs%2FRihanna%20-%20Diamonds.mp3?alt=media&token=af1e422b-7c06-4b35-bb8b-f297fbd8d1b3",
   ),
 ];
 
@@ -73,9 +85,13 @@ class _SongCardState extends State<_SongCard> {
   double _scale = 1.0;
 
   void _openPlayer() {
+    final index = dummySongs.indexOf(widget.song);
     Navigator.push(
       context,
-      MaterialPageRoute(builder: (_) => SongPlayerPage(song: widget.song)),
+      MaterialPageRoute(
+        builder: (_) =>
+            SongPlayerPage(playlist: dummySongs, initialIndex: index),
+      ),
     );
   }
 

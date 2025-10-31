@@ -17,6 +17,19 @@ class SettingsPage extends StatelessWidget {
     Colors.orange,
   ];
 
+  // Hàm helper chuyển 'small'/'normal'/'large' sang fontSize
+  double getFontSize(String size) {
+    switch (size) {
+      case 'small':
+        return 14.0;
+      case 'large':
+        return 20.0;
+      case 'normal':
+      default:
+        return 16.0;
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     final themeCubit = context.read<ThemeCubit>();
@@ -57,9 +70,16 @@ class SettingsPage extends StatelessWidget {
             ),
           ),
         ),
-        title: Text(
-          "settings".tr,
-          style: const TextStyle(fontWeight: FontWeight.w600),
+        title: BlocBuilder<SettingsCubit, SettingsState>(
+          builder: (context, settings) {
+            return Text(
+              "settings".tr,
+              style: TextStyle(
+                fontWeight: FontWeight.w600,
+                fontSize: getFontSize(settings.fontSize),
+              ),
+            );
+          },
         ),
       ),
       body: BlocBuilder<SettingsCubit, SettingsState>(
@@ -68,15 +88,18 @@ class SettingsPage extends StatelessWidget {
             padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
             children: [
               const SizedBox(height: 10),
-
-              _buildSectionHeader("appearance".tr),
+              _buildSectionHeader("appearance".tr, settings),
               _buildCard(
                 context,
                 children: [
-                  // 🌍 Ngôn ngữ
                   ListTile(
                     leading: const Icon(Icons.language),
-                    title: Text("language".tr),
+                    title: Text(
+                      "language".tr,
+                      style: TextStyle(
+                        fontSize: getFontSize(settings.fontSize),
+                      ),
+                    ),
                     trailing: DropdownButton<String>(
                       value: settings.language,
                       underline: const SizedBox(),
@@ -105,13 +128,16 @@ class SettingsPage extends StatelessWidget {
                     ),
                   ),
                   const Divider(height: 1),
-
-                  // 💡 Chế độ sáng/tối
                   BlocBuilder<ThemeCubit, ThemeMode>(
                     builder: (context, mode) {
                       return SwitchListTile(
                         secondary: const Icon(Icons.light_mode_outlined),
-                        title: Text("light_mode".tr),
+                        title: Text(
+                          "light_mode".tr,
+                          style: TextStyle(
+                            fontSize: getFontSize(settings.fontSize),
+                          ),
+                        ),
                         value: mode == ThemeMode.light,
                         onChanged: (v) => themeCubit.setMode(
                           v ? ThemeMode.light : ThemeMode.dark,
@@ -120,11 +146,14 @@ class SettingsPage extends StatelessWidget {
                     },
                   ),
                   const Divider(height: 1),
-
-                  // 🎨 Màu chủ đạo
                   ListTile(
                     leading: const Icon(Icons.color_lens_outlined),
-                    title: Text("accent_color".tr),
+                    title: Text(
+                      "accent_color".tr,
+                      style: TextStyle(
+                        fontSize: getFontSize(settings.fontSize),
+                      ),
+                    ),
                     trailing: Row(
                       mainAxisSize: MainAxisSize.min,
                       children: List.generate(accentColors.length, (i) {
@@ -154,11 +183,14 @@ class SettingsPage extends StatelessWidget {
                     ),
                   ),
                   const Divider(height: 1),
-
-                  // 🔠 Cỡ chữ
                   ListTile(
                     leading: const Icon(Icons.text_fields_outlined),
-                    title: Text("font_size".tr),
+                    title: Text(
+                      "font_size".tr,
+                      style: TextStyle(
+                        fontSize: getFontSize(settings.fontSize),
+                      ),
+                    ),
                     trailing: DropdownButton<String>(
                       value: settings.fontSize,
                       underline: const SizedBox(),
@@ -183,16 +215,19 @@ class SettingsPage extends StatelessWidget {
                   ),
                 ],
               ),
-
               const SizedBox(height: 24),
-              _buildSectionHeader("account_and_security".tr),
+              _buildSectionHeader("account_and_security".tr, settings),
               _buildCard(
                 context,
                 children: [
-                  // 🔒 Đổi mật khẩu
                   ListTile(
                     leading: const Icon(Icons.lock_outline),
-                    title: Text("change_password".tr),
+                    title: Text(
+                      "change_password".tr,
+                      style: TextStyle(
+                        fontSize: getFontSize(settings.fontSize),
+                      ),
+                    ),
                     trailing: const Icon(
                       Icons.arrow_forward_ios_rounded,
                       size: 16,
@@ -205,10 +240,14 @@ class SettingsPage extends StatelessWidget {
                     },
                   ),
                   const Divider(height: 1),
-                  // 📜 Chính sách bảo mật
                   ListTile(
                     leading: const Icon(Icons.privacy_tip_outlined),
-                    title: Text("privacy_policy".tr),
+                    title: Text(
+                      "privacy_policy".tr,
+                      style: TextStyle(
+                        fontSize: getFontSize(settings.fontSize),
+                      ),
+                    ),
                     trailing: const Icon(
                       Icons.arrow_forward_ios_rounded,
                       size: 16,
@@ -220,13 +259,12 @@ class SettingsPage extends StatelessWidget {
                 ],
               ),
               const SizedBox(height: 24),
-
               Center(
                 child: Text(
                   "version".trParams({'ver': '1.0.0'}),
                   style: TextStyle(
                     color: isDark ? Colors.white54 : Colors.black54,
-                    fontSize: 13,
+                    fontSize: getFontSize(settings.fontSize) - 2,
                   ),
                 ),
               ),
@@ -238,15 +276,15 @@ class SettingsPage extends StatelessWidget {
     );
   }
 
-  // ===== Widget phụ =====
-  Widget _buildSectionHeader(String title) => Padding(
+  Widget _buildSectionHeader(String title, SettingsState settings) => Padding(
     padding: const EdgeInsets.only(left: 4, bottom: 8),
     child: Text(
       title,
-      style: const TextStyle(
+      style: TextStyle(
         fontWeight: FontWeight.w600,
         color: Colors.grey,
         letterSpacing: 0.5,
+        fontSize: getFontSize(settings.fontSize),
       ),
     ),
   );
