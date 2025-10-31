@@ -1,12 +1,15 @@
+// profile_page.dart
 import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:firebase_auth/firebase_auth.dart';
+import 'package:firebase_storage/firebase_storage.dart';
+import 'package:image_picker/image_picker.dart';
 import 'package:note1/common/widgets/appbar/app_bar.dart';
 import 'package:note1/pretension/settings/pages/settings_page.dart';
 import 'package:note1/pretension/page/edit_profile.dart';
 import 'package:note1/pretension/auth/pages/signup_or_signin.dart';
-import 'package:supabase_flutter/supabase_flutter.dart';
-import 'package:note1/pretension/settings/bloc/settings_cubit.dart';
 
 class ProfilePage extends StatefulWidget {
   const ProfilePage({super.key});
@@ -16,62 +19,80 @@ class ProfilePage extends StatefulWidget {
 }
 
 class _ProfilePageState extends State<ProfilePage> {
-  String name = "rs6gkiutjh1mhufzhmw68x8ws";
-  String bio = "0 người theo dõi • Đang theo dõi 3";
-  String? avatarPath;
+  final FirebaseAuth _auth = FirebaseAuth.instance;
+  final FirebaseFirestore _firestore = FirebaseFirestore.instance;
+  final ImagePicker _picker = ImagePicker();
 
-  // 🔸 Hộp thoại xác nhận đăng xuất (đa ngôn ngữ)
+  String name = "";
+  String bio = "";
+  String email = "";
+  String? avatarUrl;
+
+  @override
+  void initState() {
+    super.initState();
+    _loadUserInfo();
+  }
+
+  // 🔹 Lấy thông tin người dùng từ Firestore
+  Future<void> _loadUserInfo() async {
+    final user = _auth.currentUser;
+    if (user == null) return;
+
+    final doc = await _firestore.collection('users').doc(user.uid).get();
+    if (doc.exists) {
+      setState(() {
+        name = doc.data()?['name'] ?? 'user'.tr;
+        bio = doc.data()?['bio'] ?? 'no_bio'.tr;
+        avatarUrl = doc.data()?['avatarUrl'];
+        email = user.email ?? '';
+      });
+    } else {
+      // Nếu user mới chưa có dữ liệu -> tạo mặc định
+      await _firestore.collection('users').doc(user.uid).set({
+        'name': user.displayName ?? 'user'.tr,
+        'bio': 'no_bio'.tr,
+        'avatarUrl': null,
+      });
+      _loadUserInfo();
+    }
+  }
+
+  // 🔸 Hộp thoại xác nhận đăng xuất
   void _showLogoutDialog(BuildContext context) {
     showDialog(
       context: context,
       builder: (_) => AlertDialog(
         backgroundColor: Colors.grey[900],
         title: Text(
-          "Xác nhận đăng xuất".tr,
+          "logout_confirm".tr,
           style: const TextStyle(color: Colors.white),
         ),
         content: Text(
-          "Bạn có chắc chắn muốn đăng xuất không?".tr,
+          "logout_question".tr,
           style: const TextStyle(color: Colors.white70),
         ),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(context),
             child: Text(
-              "Hủy".tr,
+              "cancel".tr,
               style: const TextStyle(color: Colors.white70),
             ),
           ),
           TextButton(
             onPressed: () async {
               Navigator.pop(context);
-              final messenger = ScaffoldMessenger.of(context);
-              messenger.showSnackBar(
-                SnackBar(content: Text("Đang đăng xuất...".tr)),
-              );
-
-              try {
-                await Supabase.instance.client.auth.signOut();
-
-                if (context.mounted) {
-                  messenger.showSnackBar(
-                    SnackBar(content: Text("Đăng xuất thành công".tr)),
-                  );
-                  Navigator.of(context).pushAndRemoveUntil(
-                    MaterialPageRoute(
-                      builder: (_) => const SignupOrSigninPage(),
-                    ),
-                    (route) => false,
-                  );
-                }
-              } catch (e) {
-                messenger.showSnackBar(
-                  SnackBar(content: Text("Lỗi đăng xuất: $e")),
+              await _auth.signOut();
+              if (context.mounted) {
+                Navigator.of(context).pushAndRemoveUntil(
+                  MaterialPageRoute(builder: (_) => const SignupOrSigninPage()),
+                  (route) => false,
                 );
               }
             },
             child: Text(
-              "Đăng xuất".tr,
+              "logout".tr,
               style: const TextStyle(color: Colors.redAccent),
             ),
           ),
@@ -88,16 +109,16 @@ class _ProfilePageState extends State<ProfilePage> {
         builder: (_) => EditProfilePage(
           currentName: name,
           currentBio: bio,
-          currentAvatar: avatarPath,
+          currentAvatar: avatarUrl,
         ),
       ),
     );
 
     if (result != null && result is Map<String, dynamic>) {
       setState(() {
-        name = result['name'];
-        bio = result['bio'];
-        avatarPath = result['avatar'];
+        name = result['name'] ?? name;
+        bio = result['bio'] ?? bio;
+        avatarUrl = result['avatar'] ?? avatarUrl;
       });
     }
   }
@@ -108,7 +129,6 @@ class _ProfilePageState extends State<ProfilePage> {
       extendBodyBehindAppBar: true,
       backgroundColor: Colors.black,
       appBar: BasicAppbar(
-        // THAY ĐỔI: Đặt showBack thành false để xóa nút trở về
         showBack: false,
         action: PopupMenuButton<int>(
           icon: const Icon(Icons.more_vert, color: Colors.white),
@@ -120,43 +140,31 @@ class _ProfilePageState extends State<ProfilePage> {
             PopupMenuItem<int>(
               value: 0,
               child: Text(
-                "Thêm vào playlist".tr,
+                "add_to_playlist".tr,
                 style: const TextStyle(color: Colors.white),
               ),
             ),
             PopupMenuItem<int>(
               value: 1,
               child: Text(
-                "Chia sẻ".tr,
+                "share".tr,
                 style: const TextStyle(color: Colors.white),
               ),
             ),
             PopupMenuItem<int>(
               value: 2,
               child: Text(
-                "Cài đặt".tr,
+                "settings".tr,
                 style: const TextStyle(color: Colors.white),
               ),
             ),
           ],
           onSelected: (value) {
-            switch (value) {
-              case 0:
-                ScaffoldMessenger.of(
-                  context,
-                ).showSnackBar(SnackBar(content: Text("Thêm vào playlist".tr)));
-                break;
-              case 1:
-                ScaffoldMessenger.of(
-                  context,
-                ).showSnackBar(SnackBar(content: Text("Đã chia sẻ".tr)));
-                break;
-              case 2:
-                Navigator.push(
-                  context,
-                  MaterialPageRoute(builder: (_) => const SettingsPage()),
-                );
-                break;
+            if (value == 2) {
+              Navigator.push(
+                context,
+                MaterialPageRoute(builder: (_) => const SettingsPage()),
+              );
             }
           },
         ),
@@ -186,13 +194,13 @@ class _ProfilePageState extends State<ProfilePage> {
                       CircleAvatar(
                         radius: 40,
                         backgroundColor: Colors.orangeAccent,
-                        backgroundImage: avatarPath != null
-                            ? FileImage(File(avatarPath!))
+                        backgroundImage: avatarUrl != null
+                            ? NetworkImage(avatarUrl!)
                             : null,
-                        child: avatarPath == null
-                            ? const Text(
-                                "R",
-                                style: TextStyle(
+                        child: avatarUrl == null
+                            ? Text(
+                                name.isNotEmpty ? name[0].toUpperCase() : "?",
+                                style: const TextStyle(
                                   color: Colors.black,
                                   fontSize: 40,
                                   fontWeight: FontWeight.bold,
@@ -222,6 +230,14 @@ class _ProfilePageState extends State<ProfilePage> {
                                 fontSize: 13,
                               ),
                             ),
+                            const SizedBox(height: 4),
+                            Text(
+                              email,
+                              style: const TextStyle(
+                                color: Colors.white54,
+                                fontSize: 12,
+                              ),
+                            ),
                           ],
                         ),
                       ),
@@ -246,13 +262,13 @@ class _ProfilePageState extends State<ProfilePage> {
                           ),
                         ),
                         onPressed: () => _editProfile(context),
-                        child: Text("Chỉnh sửa".tr),
+                        child: Text("edit_profile".tr),
                       ),
                       const SizedBox(width: 12),
                       IconButton(
                         onPressed: () => _showLogoutDialog(context),
                         icon: const Icon(Icons.logout, color: Colors.redAccent),
-                        tooltip: "Đăng xuất".tr,
+                        tooltip: "logout".tr,
                       ),
                     ],
                   ),
@@ -264,7 +280,7 @@ class _ProfilePageState extends State<ProfilePage> {
                     color: Colors.black,
                     child: Center(
                       child: Text(
-                        "Không có hoạt động gần đây".tr,
+                        "no_recent_activity".tr,
                         style: const TextStyle(
                           color: Colors.white70,
                           fontSize: 16,

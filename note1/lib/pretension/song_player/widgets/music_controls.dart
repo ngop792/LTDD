@@ -7,7 +7,15 @@ import 'package:note1/pretension/song_player/pages/music_player.dart';
 
 class MusicControls extends StatefulWidget {
   final SimpleSong song;
-  const MusicControls({super.key, required this.song});
+  final VoidCallback? onNext;
+  final VoidCallback? onPrevious;
+
+  const MusicControls({
+    super.key,
+    required this.song,
+    this.onNext,
+    this.onPrevious,
+  });
 
   @override
   State<MusicControls> createState() => _MusicControlsState();
@@ -30,7 +38,7 @@ class _MusicControlsState extends State<MusicControls>
   StreamSubscription<Duration?>? _durSub;
   StreamSubscription<PlayerState>? _stateSub;
 
-  bool _isDragging = false; // 🔹 Trạng thái đang kéo thanh
+  bool _isDragging = false;
 
   @override
   void initState() {
@@ -108,9 +116,12 @@ class _MusicControlsState extends State<MusicControls>
 
   @override
   Widget build(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final Color baseIconColor = isDark ? Colors.white : Colors.black87;
+    final Color activeColor = Colors.greenAccent.shade400;
+
     return Column(
       children: [
-        // ===== Thanh tiến trình =====
         ValueListenableBuilder<Color>(
           valueListenable: AppColors.primary,
           builder: (context, color, _) {
@@ -119,22 +130,14 @@ class _MusicControlsState extends State<MusicControls>
               min: 0,
               max: 1,
               activeColor: color,
-              inactiveColor: Colors.grey.shade800,
-
-              // 🔹 Khi bắt đầu kéo
-              onChangeStart: (v) {
-                setState(() => _isDragging = true);
-              },
-
-              // 🔹 Khi đang kéo
+              inactiveColor: Colors.grey.shade400,
+              onChangeStart: (v) => setState(() => _isDragging = true),
               onChanged: (v) {
                 setState(() {
                   progress = v;
                   current = Duration(seconds: (player.total * v).toInt());
                 });
               },
-
-              // 🔹 Khi thả tay
               onChangeEnd: (v) {
                 setState(() => _isDragging = false);
                 player.seekFraction(v);
@@ -149,70 +152,104 @@ class _MusicControlsState extends State<MusicControls>
             children: [
               Text(
                 _format(current),
-                style: const TextStyle(color: Colors.white),
+                style: TextStyle(color: baseIconColor, fontSize: 13),
               ),
-              Text(_format(total), style: const TextStyle(color: Colors.white)),
+              Text(
+                _format(total),
+                style: TextStyle(color: baseIconColor, fontSize: 13),
+              ),
             ],
           ),
         ),
         const SizedBox(height: 20),
-
-        // ===== Các nút điều khiển =====
         Row(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            IconButton(
-              icon: Icon(
-                Icons.shuffle,
-                color: isShuffle ? Colors.green : Colors.white,
+            // 🔄 Shuffle
+            Container(
+              decoration: BoxDecoration(
+                color: isShuffle
+                    ? activeColor.withOpacity(0.2)
+                    : Colors.transparent,
+                shape: BoxShape.circle,
               ),
-              onPressed: _toggleShuffle,
-            ),
-            const SizedBox(width: 10),
-            IconButton(
-              icon: const Icon(Icons.skip_previous, size: 36),
-              onPressed: () {
-                // TODO: thêm logic prev nếu cần
-              },
-            ),
-            const SizedBox(width: 10),
-            ScaleTransition(
-              scale: _scaleAnimation,
               child: IconButton(
                 icon: Icon(
-                  isPlaying
-                      ? Icons.pause_circle_filled
-                      : Icons.play_circle_fill,
-                  size: 64,
-                  color: Colors.green,
+                  Icons.shuffle,
+                  color: isShuffle ? activeColor : baseIconColor,
                 ),
-                onPressed: () async {
-                  if (isPlaying) {
-                    player.pause();
-                    _playController.reverse();
-                  } else {
-                    debugPrint("🎵 Phát từ URL: ${widget.song.audioUrl}");
-                    await player.playSong(widget.song.audioUrl);
-                    _playController.forward();
-                  }
-                  setState(() => isPlaying = player.isPlaying);
+                onPressed: _toggleShuffle,
+              ),
+            ),
+            const SizedBox(width: 10),
+
+            // ⏮ Previous
+            IconButton(
+              icon: Icon(
+                Icons.skip_previous,
+                size: 36,
+                color: baseIconColor.withOpacity(0.8),
+              ),
+              onPressed: widget.onPrevious,
+            ),
+            const SizedBox(width: 10),
+
+            // ▶️ Play / Pause
+            ScaleTransition(
+              scale: _scaleAnimation,
+              child: ValueListenableBuilder<Color>(
+                valueListenable: AppColors.primary,
+                builder: (context, color, _) {
+                  return IconButton(
+                    icon: Icon(
+                      isPlaying
+                          ? Icons.pause_circle_filled
+                          : Icons.play_circle_fill,
+                      size: 64,
+                      color: color,
+                    ),
+                    onPressed: () async {
+                      if (isPlaying) {
+                        player.pause();
+                        _playController.reverse();
+                      } else {
+                        await player.playSong(widget.song.audioUrl);
+                        _playController.forward();
+                      }
+                      setState(() => isPlaying = player.isPlaying);
+                    },
+                  );
                 },
               ),
             ),
             const SizedBox(width: 10),
-            IconButton(
-              icon: const Icon(Icons.skip_next, size: 36),
-              onPressed: () {
-                // TODO: thêm logic next nếu cần
-              },
-            ),
-            const SizedBox(width: 10),
+
+            // ⏭ Next
             IconButton(
               icon: Icon(
-                repeatMode == 2 ? Icons.repeat_one : Icons.repeat,
-                color: repeatMode == 0 ? Colors.white : Colors.green,
+                Icons.skip_next,
+                size: 36,
+                color: baseIconColor.withOpacity(0.8),
               ),
-              onPressed: _toggleRepeat,
+              onPressed: widget.onNext,
+            ),
+            const SizedBox(width: 10),
+
+            // 🔁 Repeat
+            Container(
+              decoration: BoxDecoration(
+                color: repeatMode != 0
+                    ? activeColor.withOpacity(0.2)
+                    : Colors.transparent,
+                shape: BoxShape.circle,
+              ),
+              child: IconButton(
+                icon: Icon(
+                  repeatMode == 2 ? Icons.repeat_one : Icons.repeat,
+                  color: repeatMode == 0 ? baseIconColor : activeColor,
+                ),
+                onPressed: _toggleRepeat,
+              ),
             ),
           ],
         ),

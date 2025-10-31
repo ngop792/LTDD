@@ -1,143 +1,216 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:note1/domain/entities/playlist.dart';
+import 'package:note1/domain/entities/simple_songs.dart';
+import 'package:note1/services/song_service.dart';
+import 'package:note1/core/configs/assets/app_images.dart';
+import 'package:note1/pretension/settings/bloc/settings_cubit.dart';
+import 'package:note1/pretension/settings/pages/settings_page.dart';
+import 'dart:math';
 
-// Giả định class Song (giữ lại để tránh lỗi biên dịch)
 class Song {
+  final String id;
   final String title;
   final String artist;
-  final String imageUrl; // URL hoặc path asset
+  final String imageUrl;
+  final String audioUrl;
 
-  Song({required this.title, required this.artist, required this.imageUrl});
+  Song({
+    required this.id,
+    required this.title,
+    required this.artist,
+    required this.imageUrl,
+    required this.audioUrl,
+  });
 }
-
-// ⚠️ Danh sách này chỉ là biến toàn cục rỗng, không cần dùng
-// Nếu dùng API, bạn nên load trực tiếp vào _sourceSongs.
-final List<Song> availableSongs = [];
 
 class AddSongPage extends StatefulWidget {
   final Playlist playlist;
+  final Function(SimpleSong) onSongAdded;
 
-  const AddSongPage({super.key, required this.playlist});
+  const AddSongPage({
+    super.key,
+    required this.playlist,
+    required this.onSongAdded,
+  });
 
   @override
   State<AddSongPage> createState() => _AddSongPageState();
 }
 
-class _AddSongPageState extends State<AddSongPage> {
-  // Biến trạng thái để lưu danh sách bài hát được tìm kiếm/hiển thị
-  List<Song> currentSongs = [];
-  bool isLoading = false; // Trạng thái tải dữ liệu
+class _AddSongPageState extends State<AddSongPage>
+    with TickerProviderStateMixin {
+  final SongService _songService = SongService();
+  final List<String> songImages = [
+    AppImages.s1,
+    AppImages.s2,
+    AppImages.s3,
+    AppImages.s4,
+    AppImages.s5,
+    AppImages.s6,
+  ];
 
-  // Dữ liệu gốc mà ô tìm kiếm sẽ lọc trên đó.
-  // ✅ ĐÃ SỬA: Không dùng 'final' và khởi tạo bằng danh sách rỗng để có thể gán lại
   List<Song> _sourceSongs = [];
+  List<Song> _uploadedSongs = [];
+  List<Song> currentSongs = [];
+
+  bool isLoading = false;
+  late TabController _tabController;
+  int _currentTabIndex = 0;
+  final Random _random = Random();
 
   @override
   void initState() {
     super.initState();
-    // ✅ THÊM: Bắt đầu tải dữ liệu khi widget được khởi tạo
-    _loadInitialSongs();
+    _tabController = TabController(length: 4, vsync: this);
+    _tabController.addListener(_onTabChanged);
+    _loadOnlineSongs();
+    _loadUploadedSongs();
   }
 
-  // ✅ HÀM TẢI DỮ LIỆU ĐƯỢC THÊM VÀO
-  Future<void> _loadInitialSongs() async {
+  void _onTabChanged() {
+    if (_tabController.indexIsChanging) return;
     setState(() {
-      isLoading = true; // Bắt đầu tải, hiển thị CircularProgressIndicator
+      _currentTabIndex = _tabController.index;
+      if (_currentTabIndex == 0) {
+        currentSongs = _sourceSongs;
+      } else if (_currentTabIndex == 3) {
+        currentSongs = _uploadedSongs;
+      } else {
+        currentSongs = [];
+      }
     });
+  }
 
-    // --- PHẦN GỌI API THỰC TẾ CỦA BẠN SẼ Ở ĐÂY ---
+  // 🟢 Load danh sách bài hát online (demo)
+  Future<void> _loadOnlineSongs() async {
+    setState(() => isLoading = true);
+    await Future.delayed(const Duration(milliseconds: 500));
 
-    // 💡 Tạm thời dùng Future.delayed để giả lập độ trễ mạng (2 giây)
-    await Future.delayed(const Duration(seconds: 2));
-
-    // 💡 Dữ liệu mẫu tạm thời (thay thế bằng kết quả từ API)
-    final List<Song> fetchedSongs = [
+    final songs = [
       Song(
-        title: "Bài Hát API Mới",
-        artist: "Ca Sĩ API",
-        imageUrl: "assets/new_song_1.jpg",
+        id: '1',
+        title: "Bài Hát Mẫu",
+        artist: "Ca Sĩ A",
+        imageUrl: songImages[_random.nextInt(songImages.length)],
+        audioUrl: "https://example.com/audio1.mp3",
       ),
       Song(
-        title: "Nhạc Hot 2024",
-        artist: "Trending",
-        imageUrl: "assets/new_song_2.jpg",
-      ),
-      Song(
-        title: "Đêm Đà Nẵng",
+        id: '2',
+        title: "Demo",
         artist: "Ai Đó",
-        imageUrl: "assets/new_song_3.jpg",
+        imageUrl: songImages[_random.nextInt(songImages.length)],
+        audioUrl: "https://example.com/audio2.mp3",
+      ),
+      Song(
+        id: '3',
+        title: "Giai điệu yêu thương",
+        artist: "Ngọc Linh",
+        imageUrl: songImages[_random.nextInt(songImages.length)],
+        audioUrl: "https://example.com/audio3.mp3",
       ),
     ];
 
-    // ----------------------------------------------------
-
     setState(() {
-      _sourceSongs = fetchedSongs; // Cập nhật danh sách gốc
-      currentSongs = fetchedSongs; // Cập nhật danh sách hiển thị
-      isLoading = false; // Kết thúc tải
+      _sourceSongs = songs;
+      if (_currentTabIndex == 0) currentSongs = songs;
+      isLoading = false;
     });
   }
 
-  // Hàm xử lý logic tìm kiếm và lọc dữ liệu (không thay đổi)
-  void _filterSongs(String query) {
-    if (query.isEmpty) {
+  // 🟢 Load bài hát upload từ API
+  Future<void> _loadUploadedSongs() async {
+    setState(() => isLoading = true);
+    try {
+      final data = await _songService.fetchSongs();
+      final songs = data.map<Song>((song) {
+        return Song(
+          id: song['id'].toString(),
+          title: song['title'] ?? 'Không có tiêu đề',
+          artist: song['artist'] ?? 'Không rõ',
+          imageUrl:
+              songImages[_random.nextInt(songImages.length)], // 🔹 random ảnh
+          audioUrl: song['audio_url'] ?? song['url'] ?? '',
+        );
+      }).toList();
+
       setState(() {
-        currentSongs = _sourceSongs;
+        _uploadedSongs = songs;
+        if (_currentTabIndex == 3) currentSongs = songs;
+        isLoading = false;
       });
-      return;
+    } catch (e) {
+      setState(() => isLoading = false);
+      debugPrint('❌ Lỗi tải Upload songs: $e');
+    }
+  }
+
+  // 🟣 Tìm kiếm bài hát
+  void _filterSongs(String query) {
+    final lower = query.toLowerCase();
+    List<Song> filtered = [];
+
+    if (_currentTabIndex == 0) {
+      filtered = _sourceSongs
+          .where(
+            (song) =>
+                song.title.toLowerCase().contains(lower) ||
+                song.artist.toLowerCase().contains(lower),
+          )
+          .toList();
+    } else if (_currentTabIndex == 3) {
+      filtered = _uploadedSongs
+          .where(
+            (song) =>
+                song.title.toLowerCase().contains(lower) ||
+                song.artist.toLowerCase().contains(lower),
+          )
+          .toList();
     }
 
-    final filteredList = _sourceSongs.where((song) {
-      final titleLower = song.title.toLowerCase();
-      final artistLower = song.artist.toLowerCase();
-      final searchLower = query.toLowerCase();
-      return titleLower.contains(searchLower) ||
-          artistLower.contains(searchLower);
-    }).toList();
-
-    setState(() {
-      currentSongs = filteredList;
-    });
+    setState(() => currentSongs = filtered);
   }
 
-  // ... (các widget _buildSearchBar, _buildTabBar, _buildSongList và build method không đổi)
-
-  // --- Widget Thanh Tìm Kiếm ---
-  Widget _buildSearchBar() {
+  Widget _buildSearchBar(Color accentColor, bool isDark) {
     return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 8.0),
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
       child: Container(
         height: 40,
         decoration: BoxDecoration(
-          color: Colors.white,
+          color: isDark ? Colors.grey.shade900 : Colors.white,
           borderRadius: BorderRadius.circular(20),
+          border: Border.all(
+            color: isDark ? Colors.white12 : accentColor.withOpacity(0.3),
+          ),
         ),
         child: TextField(
           onChanged: _filterSongs,
-          decoration: const InputDecoration(
+          style: TextStyle(color: isDark ? Colors.white : Colors.black),
+          decoration: InputDecoration(
             hintText: "Tìm kiếm bài hát, nghệ sĩ",
-            hintStyle: TextStyle(color: Colors.grey),
-            prefixIcon: Icon(Icons.search, color: Colors.grey),
+            hintStyle: TextStyle(color: isDark ? Colors.white54 : Colors.grey),
+            prefixIcon: Icon(
+              Icons.search,
+              color: isDark ? Colors.white54 : accentColor,
+            ),
             border: InputBorder.none,
-            contentPadding: EdgeInsets.symmetric(vertical: 8.0),
+            contentPadding: const EdgeInsets.symmetric(vertical: 8),
           ),
-          style: const TextStyle(color: Colors.black),
         ),
       ),
     );
   }
 
-  // --- Widget TabBar (Giãn đều) ---
-  Widget _buildTabBar() {
-    return const Align(
+  Widget _buildTabBar(Color accentColor, bool isDark) {
+    return Align(
       alignment: Alignment.centerLeft,
       child: TabBar(
-        isScrollable: false, // Giãn đều các tab
-        indicatorColor: Colors.purple,
-        labelColor: Colors.black,
-        unselectedLabelColor: Colors.grey,
-        labelStyle: TextStyle(fontWeight: FontWeight.bold, fontSize: 15),
-        tabs: [
+        controller: _tabController,
+        indicatorColor: isDark ? Colors.white54 : accentColor,
+        labelColor: isDark ? Colors.white : accentColor,
+        unselectedLabelColor: isDark ? Colors.white54 : Colors.grey,
+        labelStyle: const TextStyle(fontWeight: FontWeight.bold, fontSize: 15),
+        tabs: const [
           Tab(text: "Online"),
           Tab(text: "Cá nhân"),
           Tab(text: "Gần đây"),
@@ -147,34 +220,17 @@ class _AddSongPageState extends State<AddSongPage> {
     );
   }
 
-  // --- Widget Danh sách Bài hát (Tối ưu giao diện Thẳng hàng) ---
-  Widget _buildSongList(List<Song> songs, BuildContext context) {
-    if (isLoading) {
-      // ✅ Hiển thị loading khi dữ liệu đang được tải
-      return const Center(child: CircularProgressIndicator());
-    }
-
-    // Trường hợp 1: Danh sách gốc có data nhưng kết quả lọc rỗng
-    if (songs.isEmpty && _sourceSongs.isNotEmpty) {
+  Widget _buildSongList(List<Song> songs, Color accentColor, bool isDark) {
+    if (isLoading) return const Center(child: CircularProgressIndicator());
+    if (songs.isEmpty) {
       return const Center(
         child: Text(
-          "Không tìm thấy bài hát nào phù hợp với từ khóa tìm kiếm.",
+          "Không có bài hát nào.",
           style: TextStyle(color: Colors.grey, fontSize: 16),
         ),
       );
     }
 
-    // Trường hợp 2: Danh sách gốc rỗng (chưa load data hoặc data API rỗng)
-    if (songs.isEmpty && _sourceSongs.isEmpty) {
-      return const Center(
-        child: Text(
-          "Chưa có bài hát nào được tải lên.",
-          style: TextStyle(color: Colors.grey, fontSize: 16),
-        ),
-      );
-    }
-
-    // Phần hiển thị danh sách bài hát và DẤU CỘNG
     return ListView.builder(
       itemCount: songs.length,
       padding: EdgeInsets.zero,
@@ -182,52 +238,89 @@ class _AddSongPageState extends State<AddSongPage> {
         final song = songs[index];
         return ListTile(
           contentPadding: const EdgeInsets.symmetric(
-            horizontal: 16.0,
-            vertical: 4.0,
+            horizontal: 16,
+            vertical: 4,
           ),
-
           leading: ClipRRect(
-            borderRadius: BorderRadius.circular(5.0),
+            borderRadius: BorderRadius.circular(5),
             child: Image.asset(
               song.imageUrl,
               width: 50,
               height: 50,
               fit: BoxFit.cover,
-              errorBuilder: (context, error, stackTrace) => Container(
-                width: 50,
-                height: 50,
-                color: Colors.grey.shade300,
-                child: const Icon(Icons.music_note, color: Colors.white),
-              ),
             ),
           ),
-
           title: Text(
             song.title,
             maxLines: 1,
             overflow: TextOverflow.ellipsis,
-            style: const TextStyle(fontWeight: FontWeight.w500),
+            style: TextStyle(
+              fontWeight: FontWeight.w500,
+              color: isDark ? Colors.white : Colors.black,
+            ),
           ),
           subtitle: Text(
             song.artist,
             maxLines: 1,
             overflow: TextOverflow.ellipsis,
+            style: TextStyle(color: isDark ? Colors.white70 : Colors.grey[700]),
           ),
-
           trailing: IconButton(
-            icon: const Icon(
+            icon: Icon(
               Icons.add_circle_outline,
-              color: Colors.grey,
-              size: 28,
+              color: isDark ? Colors.white54 : accentColor,
             ),
-            onPressed: () {
-              ScaffoldMessenger.of(context).showSnackBar(
-                SnackBar(
-                  content: Text(
-                    'Đã thêm "${song.title}" vào playlist "${widget.playlist.name}"',
+            onPressed: () async {
+              if (song.audioUrl.isEmpty) {
+                ScaffoldMessenger.of(context).showSnackBar(
+                  SnackBar(
+                    content: Text('❌ Bài hát "${song.title}" chưa có URL nhạc'),
                   ),
-                ),
+                );
+                return;
+              }
+
+              final newSong = SimpleSong(
+                title: song.title,
+                artist: song.artist,
+                duration: 0,
+                imageUrl: song.imageUrl,
+                audioUrl: song.audioUrl,
               );
+
+              if (widget.playlist.id.trim().isEmpty) {
+                widget.onSongAdded(newSong);
+                ScaffoldMessenger.of(context).showSnackBar(
+                  SnackBar(
+                    content: Text(
+                      'Đã thêm "${song.title}" tạm thời. Lưu playlist để lưu vĩnh viễn!',
+                    ),
+                  ),
+                );
+                return;
+              }
+
+              try {
+                final success = await _songService.addSongToPlaylist(
+                  playlistId: widget.playlist.id,
+                  songData: {'song_id': song.id, 'audio_url': song.audioUrl},
+                );
+
+                if (!success) throw Exception("API lỗi khi thêm bài hát");
+
+                widget.onSongAdded(newSong);
+                ScaffoldMessenger.of(context).showSnackBar(
+                  SnackBar(
+                    content: Text(
+                      'Đã thêm "${song.title}" vào playlist "${widget.playlist.name}"',
+                    ),
+                  ),
+                );
+              } catch (e) {
+                ScaffoldMessenger.of(context).showSnackBar(
+                  SnackBar(content: Text('❌ Thêm bài hát thất bại: $e')),
+                );
+              }
             },
           ),
         );
@@ -237,53 +330,63 @@ class _AddSongPageState extends State<AddSongPage> {
 
   @override
   Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final isDark = theme.brightness == Brightness.dark;
+    final settings = context.watch<SettingsCubit>().state;
+    final accentColor = isDark
+        ? Colors.white
+        : SettingsPage.accentColors[settings.accentIndex];
+
     return DefaultTabController(
       length: 4,
       child: Scaffold(
-        backgroundColor: Colors.white,
+        backgroundColor: isDark ? Colors.black : Colors.white,
         body: NestedScrollView(
-          headerSliverBuilder: (context, innerBoxIsScrolled) {
-            return <Widget>[
-              SliverAppBar(
-                automaticallyImplyLeading: false,
-                pinned: true,
-                backgroundColor: Colors.white,
-                elevation: 0.5,
-                centerTitle: true,
-                title: const Text(
-                  "Thêm bài hát",
-                  style: TextStyle(
-                    color: Colors.black,
-                    fontWeight: FontWeight.bold,
-                  ),
-                ),
-                leading: IconButton(
-                  icon: const Icon(Icons.close, color: Colors.black),
-                  onPressed: () => Navigator.pop(context),
-                ),
-                bottom: PreferredSize(
-                  preferredSize: const Size.fromHeight(100.0),
-                  child: Column(
-                    children: [
-                      _buildSearchBar(),
-                      _buildTabBar(),
-                      const Divider(
-                        height: 1,
-                        thickness: 1,
-                        color: Color(0xFFE0E0E0),
-                      ),
-                    ],
-                  ),
+          headerSliverBuilder: (context, _) => [
+            SliverAppBar(
+              automaticallyImplyLeading: false,
+              pinned: true,
+              backgroundColor: isDark ? Colors.black : Colors.white,
+              elevation: 0.5,
+              centerTitle: true,
+              title: Text(
+                "Thêm bài hát",
+                style: TextStyle(
+                  color: isDark ? Colors.white : Colors.black,
+                  fontWeight: FontWeight.bold,
                 ),
               ),
-            ];
-          },
+              leading: IconButton(
+                icon: Icon(
+                  Icons.close,
+                  color: isDark ? Colors.white : Colors.black,
+                ),
+                onPressed: () => Navigator.pop(context),
+              ),
+              bottom: PreferredSize(
+                preferredSize: const Size.fromHeight(100),
+                child: Column(
+                  children: [
+                    _buildSearchBar(accentColor, isDark),
+                    _buildTabBar(accentColor, isDark),
+                    Divider(
+                      height: 1,
+                      color: isDark
+                          ? Colors.white12
+                          : accentColor.withOpacity(0.3),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          ],
           body: TabBarView(
+            controller: _tabController,
             children: [
-              _buildSongList(currentSongs, context),
+              _buildSongList(currentSongs, accentColor, isDark), // Online
               const Center(child: Text("Danh sách bài hát Cá nhân")),
               const Center(child: Text("Danh sách bài hát Gần đây")),
-              const Center(child: Text("Upload nhạc")),
+              _buildSongList(currentSongs, accentColor, isDark), // Upload
             ],
           ),
         ),

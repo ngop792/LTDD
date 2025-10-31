@@ -1,16 +1,175 @@
-// File: playlist_detail.dart
-
+// playlist_detail_page.dart
 import 'package:flutter/material.dart';
+import 'package:get/get.dart';
 import 'package:note1/domain/entities/playlist.dart';
+import 'package:note1/domain/entities/simple_songs.dart';
+import 'package:note1/services/song_service.dart';
 import 'package:note1/pretension/song_player/pages/add_song_page.dart';
+import 'package:note1/pretension/song_player/pages/song_player.dart';
+import 'package:note1/core/configs/assets/app_images.dart';
 
-class PlaylistDetailPage extends StatelessWidget {
+final List<String> defaultSongImages = [
+  AppImages.s1,
+  AppImages.s2,
+  AppImages.s3,
+  AppImages.s4,
+  AppImages.s5,
+  AppImages.s6,
+];
+
+class PlaylistDetailPage extends StatefulWidget {
   final Playlist playlist;
 
   const PlaylistDetailPage({super.key, required this.playlist});
 
-  // --- Widget helper: Nút Quay lại Tùy chỉnh (Hình tròn) ---
+  @override
+  State<PlaylistDetailPage> createState() => _PlaylistDetailPageState();
+}
+
+class _PlaylistDetailPageState extends State<PlaylistDetailPage> {
+  final SongService _service = SongService();
+  bool _isLoadingSongs = true;
+  List<SimpleSong> _songs = [];
+  List<SimpleSong> _tempSongs = [];
+
+  @override
+  void initState() {
+    super.initState();
+    _loadSongs();
+  }
+
+  Future<void> _loadSongs() async {
+    setState(() {
+      _isLoadingSongs = true;
+      _songs = [];
+    });
+
+    if (widget.playlist.id.isEmpty) {
+      setState(() {
+        _songs = _tempSongs;
+        _isLoadingSongs = false;
+      });
+      return;
+    }
+
+    try {
+      final fetchedSongsJson = await _service.fetchSongsInPlaylist(
+        widget.playlist.id,
+      );
+      final fetchedSongs = fetchedSongsJson
+          .map<SimpleSong>((json) => SimpleSong.fromJson(json))
+          .toList();
+
+      final mergedSongs = [
+        ..._tempSongs.where((s) => s.audioUrl.isNotEmpty),
+        ...fetchedSongs,
+      ];
+
+      setState(() {
+        _songs = mergedSongs;
+        _isLoadingSongs = false;
+      });
+    } catch (e) {
+      debugPrint("❌ ${'error_loading_songs'.tr}: $e");
+      setState(() => _isLoadingSongs = false);
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('${'error_loading_songs'.tr}: $e')),
+      );
+    }
+  }
+
+  Future<void> _deletePlaylist() async {
+    final success = await _service.deletePlaylist(widget.playlist.id);
+    if (success) {
+      Navigator.pop(context);
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('${'playlist_deleted'.tr} "${widget.playlist.name}"'),
+          duration: const Duration(seconds: 2),
+        ),
+      );
+    } else {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('playlist_delete_failed'.tr),
+          duration: const Duration(seconds: 2),
+        ),
+      );
+    }
+  }
+
+  void _showDeleteConfirmationDialog() {
+    final theme = Theme.of(context);
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        backgroundColor: theme.cardColor,
+        title: Text('delete_playlist'.tr, style: theme.textTheme.titleMedium),
+        content: Text(
+          'delete_playlist_question'.tr,
+          style: theme.textTheme.bodyMedium,
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: Text('cancel'.tr, style: theme.textTheme.labelLarge),
+          ),
+          TextButton(
+            onPressed: () async {
+              Navigator.pop(context);
+              await _deletePlaylist();
+            },
+            child: Text(
+              'delete'.tr,
+              style: theme.textTheme.labelLarge?.copyWith(color: Colors.red),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  void _onSongAdded(SimpleSong song) {
+    debugPrint('Added song: ${song.title}, audioUrl: ${song.audioUrl}');
+    setState(() {
+      _songs.insert(0, song);
+      if (song.id.isEmpty) _tempSongs.insert(0, song);
+    });
+  }
+
+  Future<void> _removeSong(SimpleSong song) async {
+    if (song.id.isNotEmpty && widget.playlist.id.isNotEmpty) {
+      final success = await _service.removeSongFromPlaylist(
+        playlistId: widget.playlist.id,
+        songId: song.id,
+      );
+
+      if (!success) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('song_delete_failed'.tr),
+            duration: const Duration(seconds: 2),
+          ),
+        );
+        return;
+      }
+    }
+
+    setState(() {
+      _songs.removeWhere((s) => s == song);
+      _tempSongs.removeWhere((s) => s == song);
+    });
+
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text('${'song_deleted'.tr} "${song.title}"'),
+        duration: const Duration(seconds: 2),
+      ),
+    );
+  }
+
   Widget _buildCustomBackButton(BuildContext context) {
+    final theme = Theme.of(context);
     return Padding(
       padding: const EdgeInsets.all(8.0),
       child: GestureDetector(
@@ -20,12 +179,12 @@ class PlaylistDetailPage extends StatelessWidget {
           height: 40,
           alignment: Alignment.center,
           decoration: BoxDecoration(
-            color: Colors.grey.shade200,
+            color: theme.cardColor,
             shape: BoxShape.circle,
           ),
-          child: const Icon(
+          child: Icon(
             Icons.arrow_back_ios_new,
-            color: Colors.black,
+            color: theme.iconTheme.color,
             size: 18,
           ),
         ),
@@ -33,57 +192,88 @@ class PlaylistDetailPage extends StatelessWidget {
     );
   }
 
-  // --- Widget helper: Ảnh bìa ---
-  Widget _buildCoverImage() {
-    return Container(
-      width: 200,
-      height: 200,
-      decoration: BoxDecoration(
-        color: Colors.grey.shade100,
-        borderRadius: BorderRadius.circular(10),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black12.withOpacity(0.05),
-            blurRadius: 10,
-            spreadRadius: 2,
-            offset: const Offset(0, 5),
+  Widget _buildPlaylistCover() {
+    final firstFourSongs = _songs.take(4).toList();
+
+    if (firstFourSongs.isEmpty) {
+      return Center(
+        child: ClipRRect(
+          borderRadius: BorderRadius.circular(16),
+          child: Image.asset(
+            AppImages.defaultPlaylistCover,
+            width: 200,
+            height: 200,
+            fit: BoxFit.cover,
           ),
-        ],
-      ),
-      child: Center(
-        child: Icon(Icons.music_note, size: 100, color: Colors.grey.shade400),
+        ),
+      );
+    }
+
+    return Center(
+      child: SizedBox(
+        width: 200,
+        height: 200,
+        child: GridView.builder(
+          physics: const NeverScrollableScrollPhysics(),
+          gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+            crossAxisCount: 2,
+            crossAxisSpacing: 2,
+            mainAxisSpacing: 2,
+          ),
+          itemCount: firstFourSongs.length,
+          itemBuilder: (context, index) {
+            final song = firstFourSongs[index];
+            final imageUrl = song.imageUrl.isNotEmpty
+                ? song.imageUrl
+                : defaultSongImages[index % defaultSongImages.length];
+
+            return ClipRRect(
+              borderRadius: BorderRadius.circular(4),
+              child: imageUrl.startsWith('http')
+                  ? Image.network(
+                      imageUrl,
+                      fit: BoxFit.cover,
+                      errorBuilder: (_, __, ___) =>
+                          Image.asset(AppImages.s1, fit: BoxFit.cover),
+                    )
+                  : Image.asset(imageUrl, fit: BoxFit.cover),
+            );
+          },
+        ),
       ),
     );
   }
 
-  // --- Widget helper: Nút Thêm Bài ---
   Widget _buildAddSongButton(BuildContext context) {
+    final theme = Theme.of(context);
     return SizedBox(
       width: MediaQuery.of(context).size.width * 0.5,
       child: ElevatedButton(
-        onPressed: () {
-          Navigator.push(
+        onPressed: () async {
+          await Navigator.push(
             context,
             MaterialPageRoute(
-              builder: (context) => AddSongPage(playlist: playlist),
+              builder: (context) => AddSongPage(
+                playlist: widget.playlist,
+                onSongAdded: _onSongAdded,
+              ),
             ),
           );
         },
         style: ElevatedButton.styleFrom(
-          backgroundColor: Colors.white,
-          foregroundColor: Colors.black,
+          backgroundColor: theme.cardColor,
+          foregroundColor: theme.textTheme.labelLarge?.color,
           shape: RoundedRectangleBorder(
             borderRadius: BorderRadius.circular(30),
-            side: BorderSide(color: Colors.grey.shade300, width: 1),
+            side: BorderSide(color: theme.dividerColor, width: 1),
           ),
           elevation: 0,
           padding: const EdgeInsets.symmetric(vertical: 14),
         ),
-        child: const Text(
-          "THÊM BÀI",
-          style: TextStyle(
+        child: Text(
+          'add_song'.tr.toUpperCase(),
+          style: theme.textTheme.labelLarge?.copyWith(
             fontWeight: FontWeight.bold,
-            fontSize: 15,
             letterSpacing: 1.5,
           ),
         ),
@@ -91,36 +281,110 @@ class PlaylistDetailPage extends StatelessWidget {
     );
   }
 
-  // --- Widget helper: Thông báo playlist trống ---
-  Widget _buildEmptyPlaylistMessage() {
-    return const Padding(
-      padding: EdgeInsets.symmetric(horizontal: 24.0),
-      child: Text(
-        "Không có bài hát trong playlist của bạn. Tìm bài hát để thêm vào playlist của bạn",
-        textAlign: TextAlign.center,
-        style: TextStyle(
-          fontSize: 15,
-          color: Colors.grey,
-          fontStyle: FontStyle.italic,
+  Widget _buildSongList() {
+    final theme = Theme.of(context);
+
+    if (_isLoadingSongs)
+      return const Center(child: CircularProgressIndicator());
+
+    if (_songs.isEmpty) {
+      return Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 24.0, vertical: 20),
+        child: Text(
+          'no_songs_in_playlist'.tr,
+          textAlign: TextAlign.center,
+          style: theme.textTheme.bodySmall?.copyWith(
+            color: theme.hintColor,
+            fontStyle: FontStyle.italic,
+          ),
         ),
-      ),
+      );
+    }
+
+    return ListView.separated(
+      shrinkWrap: true,
+      physics: const NeverScrollableScrollPhysics(),
+      itemCount: _songs.length,
+      separatorBuilder: (_, __) =>
+          Divider(height: 1, color: theme.dividerColor),
+      itemBuilder: (context, index) {
+        final song = _songs[index];
+        final imageIndex = index % defaultSongImages.length;
+        final imageUrl = song.imageUrl.isNotEmpty
+            ? song.imageUrl
+            : defaultSongImages[imageIndex];
+
+        return ListTile(
+          leading: ClipRRect(
+            borderRadius: BorderRadius.circular(8),
+            child: imageUrl.startsWith('http')
+                ? Image.network(
+                    imageUrl,
+                    width: 50,
+                    height: 50,
+                    fit: BoxFit.cover,
+                    errorBuilder: (_, __, ___) => Image.asset(
+                      AppImages.s1,
+                      width: 50,
+                      height: 50,
+                      fit: BoxFit.cover,
+                    ),
+                  )
+                : Image.asset(
+                    imageUrl,
+                    width: 50,
+                    height: 50,
+                    fit: BoxFit.cover,
+                  ),
+          ),
+          title: Text(song.title, style: theme.textTheme.bodyMedium),
+          subtitle: Text(song.artist, style: theme.textTheme.bodySmall),
+          trailing: IconButton(
+            icon: Icon(Icons.remove_circle_outline, color: Colors.red),
+            onPressed: () => _removeSong(song),
+          ),
+          onTap: () {
+            if (song.audioUrl.isEmpty) {
+              ScaffoldMessenger.of(context).showSnackBar(
+                SnackBar(
+                  content: Text('song_no_url'.tr),
+                  duration: const Duration(seconds: 2),
+                ),
+              );
+              return;
+            }
+            final songsCopy = List<SimpleSong>.from(_songs);
+            Navigator.push(
+              context,
+              MaterialPageRoute(
+                builder: (context) =>
+                    SongPlayerPage(playlist: songsCopy, initialIndex: index),
+              ),
+            );
+          },
+        );
+      },
     );
   }
 
   @override
   Widget build(BuildContext context) {
-    final String playlistAuthor = playlist.author;
-    final int songCount = playlist.songs.length;
+    final theme = Theme.of(context);
+    final playlistAuthor = widget.playlist.author;
+    final songCount = _songs.length;
 
     return Scaffold(
-      backgroundColor: Colors.white,
+      backgroundColor: theme.scaffoldBackgroundColor,
       appBar: AppBar(
         leading: _buildCustomBackButton(context),
         automaticallyImplyLeading: false,
-        backgroundColor: Colors.white,
+        backgroundColor: theme.scaffoldBackgroundColor,
         elevation: 0,
         actions: [
-          IconButton(icon: const Icon(Icons.more_vert), onPressed: () {}),
+          IconButton(
+            icon: Icon(Icons.more_vert, color: theme.iconTheme.color),
+            onPressed: _showDeleteConfirmationDialog,
+          ),
         ],
       ),
       body: SingleChildScrollView(
@@ -130,27 +394,24 @@ class PlaylistDetailPage extends StatelessWidget {
             crossAxisAlignment: CrossAxisAlignment.center,
             children: [
               const SizedBox(height: 10),
-              _buildCoverImage(),
+              _buildPlaylistCover(),
               const SizedBox(height: 20),
               Text(
-                playlist.name,
-                style: const TextStyle(
-                  fontSize: 24,
-                  fontWeight: FontWeight.bold,
+                widget.playlist.name,
+                style: theme.textTheme.headlineSmall?.copyWith(
                   fontStyle: FontStyle.italic,
-                  color: Colors.black,
+                  fontWeight: FontWeight.bold,
                 ),
               ),
               const SizedBox(height: 4),
               Text(
-                "$songCount bài hát • bởi $playlistAuthor",
-                style: TextStyle(fontSize: 15, color: Colors.grey.shade600),
+                "$songCount ${'songs'.tr} • ${'by'.tr} $playlistAuthor",
+                style: theme.textTheme.bodySmall,
               ),
               const SizedBox(height: 30),
               _buildAddSongButton(context),
-              const SizedBox(height: 50),
-              if (songCount == 0) _buildEmptyPlaylistMessage(),
               const SizedBox(height: 20),
+              _buildSongList(),
             ],
           ),
         ),

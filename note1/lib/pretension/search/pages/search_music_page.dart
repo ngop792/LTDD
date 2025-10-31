@@ -5,7 +5,8 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'package:note1/domain/entities/simple_songs.dart';
 import 'package:note1/pretension/song_player/pages/song_player.dart';
 import 'package:note1/core/configs/assets/app_images.dart';
-import 'package:note1/pretension/search/pages/voice_search_page.dart'; // ✅ import thêm
+import 'package:note1/pretension/search/pages/voice_search_page.dart';
+import 'package:note1/services/api_constants.dart';
 
 class SearchMusicPage extends StatefulWidget {
   const SearchMusicPage({super.key});
@@ -23,18 +24,32 @@ class _SearchMusicPageState extends State<SearchMusicPage> {
   List<Map<String, String>> recentSearches = [];
   List<SimpleSong> searchResults = [];
 
-  final List<String> suggestionTags = [
-    "anh trai say hi",
-    "#zingchart",
-    "workout",
-    "hôm nay nghe gì",
+  // ✅ Danh sách ảnh random
+  final List<String> songImages = [
+    AppImages.s1,
+    AppImages.s2,
+    AppImages.s3,
+    AppImages.s4,
+    AppImages.s5,
+    AppImages.s6,
   ];
+
+  // ✅ Tạo ảnh random nếu API không trả ảnh
+  String getRandomSongImage() {
+    songImages.shuffle();
+    return songImages.first;
+  }
+
+  // ✅ Gợi ý bài hát
+  List<SimpleSong> suggestionSongs = [];
+  bool _isSuggestionLoading = false;
 
   @override
   void initState() {
     super.initState();
     _searchController.addListener(_onSearchChanged);
     _loadRecentSearches();
+    _fetchSuggestions();
   }
 
   @override
@@ -44,7 +59,7 @@ class _SearchMusicPageState extends State<SearchMusicPage> {
     super.dispose();
   }
 
-  // ================= SharedPreferences Recent Search =================
+  // ================= SharedPreferences =================
   Future<void> _loadRecentSearches() async {
     final prefs = await SharedPreferences.getInstance();
     final List<String>? savedList = prefs.getStringList(_recentSearchesKey);
@@ -115,8 +130,9 @@ class _SearchMusicPageState extends State<SearchMusicPage> {
 
     try {
       final uri = Uri.parse(
-        'http://192.168.0.105:8000/api/songs?query=${Uri.encodeQueryComponent(query)}',
+        '${ApiConstants.baseUrl}/songs?query=${Uri.encodeQueryComponent(query)}',
       );
+
       final response = await http.get(uri);
 
       if (response.statusCode == 200) {
@@ -124,14 +140,18 @@ class _SearchMusicPageState extends State<SearchMusicPage> {
         final List<dynamic> songs = data['songs'];
 
         final results = songs.map<SimpleSong>((song) {
-          final fullAudioUrl = song['url'] ?? '';
-          final title = song['title'] ?? 'Không có tiêu đề';
           return SimpleSong(
-            title: title,
-            artist: 'Không rõ',
-            duration: 200,
-            imageUrl: AppImages.b1,
-            audioUrl: fullAudioUrl,
+            title: song['title'] ?? 'Không có tiêu đề',
+            artist: song['artist'] ?? 'Không rõ',
+            duration: song['duration'] ?? 200,
+            audioUrl: song['url'] ?? '',
+
+            // ✅ RANDOM ảnh nếu API không có
+            imageUrl:
+                (song['imageUrl'] != null &&
+                    song['imageUrl'].toString().isNotEmpty)
+                ? song['imageUrl']
+                : getRandomSongImage(),
           );
         }).toList();
 
@@ -158,7 +178,44 @@ class _SearchMusicPageState extends State<SearchMusicPage> {
     }
   }
 
-  // ================= UI Widgets =================
+  // ================= API: Gợi ý =================
+  Future<void> _fetchSuggestions() async {
+    setState(() => _isSuggestionLoading = true);
+
+    try {
+      final uri = Uri.parse('${ApiConstants.baseUrl}/songs/suggestions');
+      final response = await http.get(uri);
+
+      if (response.statusCode == 200) {
+        final data = json.decode(response.body);
+        final List<dynamic> songs = data['suggested_songs'] ?? [];
+
+        setState(() {
+          suggestionSongs = songs.map<SimpleSong>((song) {
+            return SimpleSong(
+              title: song['title'] ?? 'Không có tiêu đề',
+              artist: song['artist'] ?? 'Không rõ nghệ sĩ',
+              duration: song['duration'] ?? 200,
+              audioUrl: song['url'] ?? '',
+
+              // ✅ RANDOM ảnh nếu thiếu
+              imageUrl:
+                  (song['imageUrl'] != null &&
+                      song['imageUrl'].toString().isNotEmpty)
+                  ? song['imageUrl']
+                  : getRandomSongImage(),
+            );
+          }).toList();
+        });
+      }
+    } catch (e) {
+      debugPrint('Lỗi tải gợi ý bài hát: $e');
+    } finally {
+      setState(() => _isSuggestionLoading = false);
+    }
+  }
+
+  // ================= UI =================
   Widget _buildSuggestionTags() {
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
@@ -170,43 +227,45 @@ class _SearchMusicPageState extends State<SearchMusicPage> {
             style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
           ),
           const SizedBox(height: 8),
-          Wrap(
-            spacing: 8,
-            runSpacing: 4,
-            children: suggestionTags
-                .map((tag) => _buildGradientTag(tag))
-                .toList(),
-          ),
-        ],
-      ),
-    );
-  }
 
-  Widget _buildGradientTag(String text) {
-    return Material(
-      borderRadius: BorderRadius.circular(20),
-      child: InkWell(
-        borderRadius: BorderRadius.circular(20),
-        onTap: () {
-          final query = text.replaceAll('#', '');
-          _searchController.text = query;
-          _onSearchChanged();
-        },
-        child: Container(
-          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 6),
-          decoration: BoxDecoration(
-            gradient: const LinearGradient(
-              colors: [Color(0xFF6A5AE0), Color(0xFFB798F6)],
-              begin: Alignment.topLeft,
-              end: Alignment.bottomRight,
+          if (_isSuggestionLoading)
+            const Center(child: CircularProgressIndicator())
+          else if (suggestionSongs.isEmpty)
+            const Text("Không có bài hát gợi ý.")
+          else
+            Column(
+              children: suggestionSongs.map((song) {
+                return ListTile(
+                  leading: song.imageUrl.startsWith('http')
+                      ? Image.network(
+                          song.imageUrl,
+                          width: 40,
+                          height: 40,
+                          fit: BoxFit.cover,
+                        )
+                      : Image.asset(
+                          song.imageUrl,
+                          width: 40,
+                          height: 40,
+                          fit: BoxFit.cover,
+                        ),
+                  title: Text(song.title),
+                  subtitle: Text(song.artist),
+                  onTap: () {
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (_) => SongPlayerPage(
+                          playlist: suggestionSongs,
+                          initialIndex: suggestionSongs.indexOf(song),
+                        ),
+                      ),
+                    );
+                  },
+                );
+              }).toList(),
             ),
-            borderRadius: BorderRadius.circular(20),
-          ),
-          child: Text(
-            text,
-            style: const TextStyle(color: Colors.white, fontSize: 13),
-          ),
-        ),
+        ],
       ),
     );
   }
@@ -299,7 +358,12 @@ class _SearchMusicPageState extends State<SearchMusicPage> {
           onTap: () {
             Navigator.push(
               context,
-              MaterialPageRoute(builder: (_) => SongPlayerPage(song: song)),
+              MaterialPageRoute(
+                builder: (_) => SongPlayerPage(
+                  playlist: searchResults,
+                  initialIndex: index,
+                ),
+              ),
             );
             _saveRecentSearch(song.title);
           },
@@ -348,7 +412,6 @@ class _SearchMusicPageState extends State<SearchMusicPage> {
           ),
           child: Row(
             children: [
-              // Nút Back/Clear
               IconButton(
                 onPressed: handleBackPress,
                 icon: Icon(
@@ -361,8 +424,6 @@ class _SearchMusicPageState extends State<SearchMusicPage> {
                 padding: const EdgeInsets.symmetric(horizontal: 12),
                 constraints: const BoxConstraints(minWidth: 40, minHeight: 40),
               ),
-
-              // TextField
               Expanded(
                 child: TextField(
                   controller: _searchController,
@@ -381,8 +442,6 @@ class _SearchMusicPageState extends State<SearchMusicPage> {
                   },
                 ),
               ),
-
-              // ✅ Nút ghi âm thực sự
               IconButton(
                 icon: const Icon(Icons.mic, color: Colors.deepPurple),
                 onPressed: () async {
@@ -390,7 +449,6 @@ class _SearchMusicPageState extends State<SearchMusicPage> {
                     context,
                     MaterialPageRoute(builder: (_) => const VoiceSearchPage()),
                   );
-
                   if (result != null && result is String && result.isNotEmpty) {
                     _searchController.text = result;
                     _onSearchChanged();

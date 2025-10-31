@@ -4,35 +4,21 @@ class AppTranslations extends Translations {
   @override
   Map<String, Map<String, String>> get keys => {
     'vi': {
-      // Change Password
-      'old_password': 'Mật khẩu cũ',
-      'new_password': 'Mật khẩu mới',
-      'confirm_new_password': 'Xác nhận mật khẩu mới',
-      'confirm_change_password': 'Xác nhận đổi mật khẩu',
-      'success': 'Thành công',
-      'error': 'Lỗi',
-      'password_changed_success':
-          'Mật khẩu đã được thay đổi. Vui lòng đăng nhập lại.',
-      'old_password_incorrect': 'Mật khẩu cũ không đúng.',
-      'weak_password': 'Mật khẩu mới quá yếu.',
-      'change_password_failed': 'Đổi mật khẩu thất bại.',
-      'enter_new_password': 'Vui lòng nhập mật khẩu mới',
-      'password_length_error': 'Mật khẩu phải từ 6 ký tự trở lên',
-      'password_mismatch': 'Mật khẩu xác nhận không khớp',
-      'enter_field': 'Vui lòng nhập @field',
-
-      // Chung
+      // Common
       'app_name': 'Note 1',
       'ok': 'Đồng ý',
       'cancel': 'Hủy',
       'yes': 'Có',
       'no': 'Không',
+      'logout': 'Đăng xuất',
+      'edit_profile_button': 'Chỉnh sửa',
+      'no_recent_activity': 'Không có hoạt động gần đây',
 
       // Splash / Intro
       'welcome': 'Chào mừng bạn đến với Note 1!',
       'loading': 'Đang tải...',
 
-      // Đăng nhập / Đăng ký
+      // Auth
       'signin': 'Đăng nhập',
       'signup': 'Đăng ký',
       'email': 'Email',
@@ -47,17 +33,6 @@ class AppTranslations extends Translations {
       'display_name': 'Tên hiển thị',
       'short_bio': 'Mô tả ngắn',
       'save_changes': 'Lưu thay đổi',
-
-      // Trang chọn ngôn ngữ
-      'choose_language': 'Chọn ngôn ngữ',
-      'language': 'Ngôn ngữ',
-      'switched_to_english': 'Đã chuyển sang tiếng Anh',
-      'switched_to_vietnamese': 'Đã chuyển sang tiếng Việt',
-      'app_settings': 'Cài đặt ứng dụng',
-      'change_password': 'Đổi mật khẩu',
-      'logout': 'Đăng xuất',
-      'confirm_logout': 'Xác nhận đăng xuất',
-      'logout_question': 'Bạn có chắc chắn muốn đăng xuất không?',
 
       // Settings
       'settings': 'Cài đặt',
@@ -77,12 +52,78 @@ class AppTranslations extends Translations {
       'Add_to_playlist': 'Thêm vào playlist',
       'Home': 'Trang chủ',
       'Library': 'Thư viện',
-      'Profile': "Trang cá nhân",
+      'Profile': "Hồ sơ",
       'News': 'Tin mới',
       'Category': 'Thể loại',
       'Artist': 'Nghệ sĩ',
       'Radio': 'Radio',
-      'Xác nhận đăng xuất': 'Confirm logout',
+      'logout_confirm': 'Xác nhận đăng xuất',
+      'logout_question': 'Bạn có chắc chắn muốn đăng xuất không?',
+      'create_playlist': 'Tạo playlist',
+      'enter_playlist_name': 'Nhập tên playlist',
+      'private_setting': 'Cài đặt riêng tư',
+      'album_in_progress': 'Album (đang phát triển)',
+
+      // Password / Account
+      'old_password': 'Mật khẩu cũ',
+      'new_password': 'Mật khẩu mới',
+      'confirm_new_password': 'Xác nhận mật khẩu mới',
+      'confirm_change_password': 'Xác nhận đổi mật khẩu',
+      'success': 'Thành công',
+      'error': 'Lỗi',
+      'password_changed_success':
+          'Mật khẩu đã được thay đổi. Vui lòng đăng nhập lại.',
+      'old_password_incorrect': 'Mật khẩu cũ không đúng.',
+      'weak_password': 'Mật khẩu mới quá yếu.',
+      'change_password_failed': 'Đổi mật khẩu thất bại.',
+      'enter_new_password': 'Vui lòng nhập mật khẩu mới',
+      'password_length_error': 'Mật khẩu phải từ 6 ký tự trở lên',
+      'password_mismatch': 'Mật khẩu xác nhận không khớp',
+      'enter_field': 'Vui lòng nhập @field',
+      'change_password': 'Đổi mật khẩu',
+      'account_and_security': 'Tài khoản và bảo mật',
+      'appearance': 'Giao diện',
+
+      // Language Page
+      'choose_language': 'Chọn ngôn ngữ',
+      'language': 'Ngôn ngữ',
+      'switched_to_english': 'Đã chuyển sang tiếng Anh',
+      'switched_to_vietnamese': 'Đã chuyển sang tiếng Việt',
+
+      // Edit Profile / Image
+      'cannot_pick_image': 'Không thể chọn ảnh',
+      'cannot_compress_image': 'Không thể nén ảnh',
+      'cannot_upload_image': 'Không thể upload ảnh lên Cloudinary',
+      'cannot_save_profile': 'Không thể lưu thay đổi hồ sơ',
+      'user_not_found': 'Không tìm thấy người dùng',
+      'profile_saved': 'Đã lưu thay đổi hồ sơ',
+
+      // Playlist Detail Page
+      'error_loading_songs': '❌ Lỗi khi tải bài hát',
+      'playlist_deleted': '✅ Đã xóa playlist',
+      'playlist_delete_failed': '❌ Xóa playlist thất bại',
+      'delete_playlist': 'Xóa Playlist',
+      'delete_playlist_question': 'Bạn có chắc chắn muốn xóa playlist này?',
+      'delete': 'Xóa',
+      'add_song': 'Thêm bài',
+      'no_songs_in_playlist':
+          'Không có bài hát trong playlist. Thêm bài hát để bắt đầu.',
+      'song_delete_failed': '❌ Xóa bài hát thất bại',
+      'song_deleted': '✅ Đã xóa',
+      'song_no_url': '❌ Bài hát này chưa có URL để phát.',
+      'songs': 'Bài hát',
+      'by': 'bởi',
+
+      'no_songs': 'Không có bài hát nào',
+      'see_more': 'Xem thêm ▼',
+      'collapse': 'Thu gọn ▲',
+      "suggest_for_you": "Gợi ý cho bạn",
+      "featured_album": "Album nổi bật",
+
+      "genre": "Thể loại",
+      "no_songs_in_genre": "Chưa có bài hát nào trong thể loại này.",
+      "no_title": "Không có tiêu đề",
+      "unknown": "Không rõ",
     },
     'en': {
       // Common
@@ -91,13 +132,9 @@ class AppTranslations extends Translations {
       'cancel': 'Cancel',
       'yes': 'Yes',
       'no': 'No',
-
-      'settings': 'Settings',
-      'app_settings': 'App Settings',
-      'change_password': 'Change Password',
       'logout': 'Logout',
-      'confirm_logout': 'Confirm Logout',
-      'logout_question': 'Are you sure you want to log out?',
+      'edit_profile_button': 'Edit',
+      'no_recent_activity': 'No recent activity',
 
       // Splash / Intro
       'welcome': 'Welcome to Note 1!',
@@ -114,14 +151,13 @@ class AppTranslations extends Translations {
       'already_have_account': 'Already have an account?',
       'login_success': 'Login successful',
       'signup_success': 'Signup successful',
-
-      // Language Page
-      'choose_language': 'Choose language',
-      'language': 'Language',
-      'switched_to_english': 'Switched to English',
-      'switched_to_vietnamese': 'Switched to Vietnamese',
+      'edit_profile': 'Edit Profile',
+      'display_name': 'Display Name',
+      'short_bio': 'Short Bio',
+      'save_changes': 'Save Changes',
 
       // Settings
+      'settings': 'Settings',
       'interface': 'Interface',
       'theme_mode': 'Light Mode',
       'accent_color': 'Accent Color',
@@ -132,22 +168,24 @@ class AppTranslations extends Translations {
       'account_security': 'Account & Security',
       'privacy_policy': 'Terms & Privacy',
       'version': 'Version',
+      'Setting': 'Setting',
+      'Share': 'Share',
+      'Add_to_playlist': 'Add to playlist',
+      'Home': 'Home',
+      'Library': 'Library',
+      'Profile': 'Profile',
       'News': 'News',
       'Category': 'Category',
       'Artist': 'Artist',
       'Radio': 'Radio',
-      'add_to_playlist': 'Add to playlist',
-      'share': 'Share',
-      'Setting': 'Setting',
-      'Home': 'Home',
-      'Library': 'Library',
-      'Profile': 'Profile',
-      'Xác nhận đăng xuất': 'Confirm logout',
-      'Are you sure you want to log out?': 'Are you sure you want to log out?',
-      'Edit': 'Edit',
-      'No recent activity': 'No recent activity',
+      'confirm_logout': 'Confirm Logout',
+      'logout_question': 'Are you sure you want to log out?',
+      'create_playlist': 'Create Playlist',
+      'enter_playlist_name': 'Enter playlist name',
+      'private_setting': 'Private Setting',
+      'album_in_progress': 'Album (in progress)',
 
-      // Change Password
+      // Password / Account
       'old_password': 'Old Password',
       'new_password': 'New Password',
       'confirm_new_password': 'Confirm New Password',
@@ -155,14 +193,58 @@ class AppTranslations extends Translations {
       'success': 'Success',
       'error': 'Error',
       'password_changed_success':
-          'Password has been changed. Please sign in again.',
+          'Password changed successfully. Please log in again.',
       'old_password_incorrect': 'Old password is incorrect.',
       'weak_password': 'New password is too weak.',
       'change_password_failed': 'Failed to change password.',
       'enter_new_password': 'Please enter a new password',
-      'password_length_error': 'Password must be at least 6 characters long',
-      'password_mismatch': 'Passwords do not match',
+      'password_length_error': 'Password must be at least 6 characters',
+      'password_mismatch': 'Confirm password does not match',
       'enter_field': 'Please enter @field',
+      'appearance': 'Appearance',
+
+      // Language Page
+      'choose_language': 'Choose language',
+      'language': 'Language',
+      'switched_to_english': 'Switched to English',
+      'switched_to_vietnamese': 'Switched to Vietnamese',
+
+      // Edit Profile / Image
+      'cannot_pick_image': 'Cannot pick image',
+      'cannot_compress_image': 'Cannot compress image',
+      'cannot_upload_image': 'Cannot upload image to Cloudinary',
+      'cannot_save_profile': 'Cannot save profile',
+      'user_not_found': 'User not found',
+      'profile_saved': 'Profile saved successfully',
+
+      // Playlist Detail Page
+      'error_loading_songs': '❌ Error loading songs',
+      'playlist_deleted': '✅ Playlist deleted',
+      'playlist_delete_failed': '❌ Failed to delete playlist',
+      'delete_playlist': 'Delete Playlist',
+      'delete_playlist_question':
+          'Are you sure you want to delete this playlist?',
+      'delete': 'Delete',
+      'add_song': 'Add Song',
+      'no_songs_in_playlist': 'No songs in playlist. Add songs to get started.',
+      'song_delete_failed': '❌ Failed to remove song',
+      'song_deleted': '✅ Song removed',
+      'song_no_url': '❌ This song has no URL to play.',
+      'songs': 'Songs',
+      'by': 'by',
+      'change_password': 'Change Passwword',
+      'account_and_security': 'Account and Security',
+
+      'no_songs': 'No songs available',
+      'see_more': 'See more ▼',
+      'collapse': 'Collapse ▲',
+      "suggest_for_you": "Suggested for you",
+      "featured_album": "Featured albums",
+
+      "genre": "Genre",
+      "no_songs_in_genre": "No songs in this genre yet.",
+      "no_title": "Untitled",
+      "unknown": "Unknown",
     },
   };
 }

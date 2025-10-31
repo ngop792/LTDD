@@ -25,7 +25,17 @@ Future<void> main() async {
   // ✅ Khởi tạo GetStorage
   await GetStorage.init();
 
-  // ✅ HydratedBloc (lưu trạng thái Theme & Settings)
+  // ✅ Firebase
+  await Firebase.initializeApp(options: DefaultFirebaseOptions.currentPlatform);
+
+  // ✅ Supabase
+  await Supabase.initialize(
+    url: 'https://djmzaivntfscxzekwhxg.supabase.co',
+    anonKey:
+        'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImRqbXphaXZudGZzY3h6ZWt3aHhnIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTg1OTQyNzEsImV4cCI6MjA3NDE3MDI3MX0.KePn0o0x6rKGrrtnoX5d99giBIcU6DW4m2gR-dBaPCw',
+  );
+
+  // ✅ HydratedBloc
   HydratedStorage storage;
   if (kIsWeb) {
     storage = await HydratedStorage.build(
@@ -37,20 +47,9 @@ Future<void> main() async {
       storageDirectory: HydratedStorageDirectory(dir.path),
     );
   }
-
   HydratedBloc.storage = storage;
 
-  // ✅ Khởi tạo Supabase
-  await Supabase.initialize(
-    url: 'https://djmzaivntfscxzekwhxg.supabase.co',
-    anonKey:
-        'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImRqbXphaXZudGZzY3h6ZWt3aHhnIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTg1OTQyNzEsImV4cCI6MjA3NDE3MDI3MX0.KePn0o0x6rKGrrtnoX5d99giBIcU6DW4m2gR-dBaPCw',
-  );
-
-  // ✅ Khởi tạo Firebase
-  await Firebase.initializeApp(options: DefaultFirebaseOptions.currentPlatform);
-
-  // ✅ Service Locator (Dependency Injection)
+  // ✅ Service Locator
   await initializeDependencies();
 
   runApp(const MyApp());
@@ -74,10 +73,10 @@ class MyApp extends StatelessWidget {
         BlocProvider(create: (_) => SettingsCubit()),
       ],
       child: BlocBuilder<ThemeCubit, ThemeMode>(
-        builder: (context, mode) {
+        builder: (context, themeMode) {
           return BlocBuilder<SettingsCubit, SettingsState>(
             builder: (context, settings) {
-              // 🔹 Cỡ chữ
+              // 🔹 Cỡ chữ toàn app
               final scale = switch (settings.fontSize) {
                 'small' => 0.9,
                 'large' => 1.2,
@@ -96,22 +95,26 @@ class MyApp extends StatelessWidget {
                 debugShowCheckedModeBanner: false,
                 theme: light,
                 darkTheme: dark,
-                themeMode: mode,
+                themeMode: themeMode,
                 translations: AppTranslations(),
                 supportedLocales: const [Locale('vi'), Locale('en')],
                 locale: Get.locale ?? Locale(settings.language),
                 fallbackLocale: const Locale('en'),
-
                 localizationsDelegates: const [
                   GlobalMaterialLocalizations.delegate,
                   GlobalWidgetsLocalizations.delegate,
                   GlobalCupertinoLocalizations.delegate,
                 ],
-
-                home: MediaQuery(
-                  data: MediaQuery.of(context).copyWith(textScaleFactor: scale),
-                  child: const SplashPage(),
-                ),
+                builder: (context, child) {
+                  // 🔹 Áp dụng textScaleFactor cho toàn app
+                  return MediaQuery(
+                    data: MediaQuery.of(
+                      context,
+                    ).copyWith(textScaleFactor: scale),
+                    child: child!,
+                  );
+                },
+                home: const SplashPage(),
               );
             },
           );

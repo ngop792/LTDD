@@ -21,13 +21,16 @@ class _UploadMusicPageState extends State<UploadMusicPage> {
   bool isUploading = false;
   final TextEditingController titleController = TextEditingController();
 
+  // ✅ Thêm biến hiển thị thể loại dự đoán
+  String? predictedGenre;
+
   /// 🔹 Chọn file nhạc
   Future<void> pickFile() async {
     try {
       final result = await FilePicker.platform.pickFiles(
         type: FileType.custom,
         allowedExtensions: ['mp3', 'wav', 'm4a'],
-        withData: true, // cần cho Web
+        withData: true,
       );
 
       if (result != null) {
@@ -50,7 +53,7 @@ class _UploadMusicPageState extends State<UploadMusicPage> {
     }
   }
 
-  /// 🔹 Upload lên Laravel
+  /// 🔹 Upload lên Laravel + AI Dự đoán
   Future<void> uploadMusic() async {
     final title = titleController.text.trim();
     if (title.isEmpty) {
@@ -62,7 +65,6 @@ class _UploadMusicPageState extends State<UploadMusicPage> {
       return;
     }
 
-    // Nếu chưa chọn file
     if ((kIsWeb && selectedBytes == null) ||
         (!kIsWeb && selectedFile == null)) {
       bool confirm = false;
@@ -80,17 +82,31 @@ class _UploadMusicPageState extends State<UploadMusicPage> {
       if (!confirm) return;
     }
 
-    setState(() => isUploading = true);
+    setState(() {
+      isUploading = true;
+      predictedGenre = null; // reset thể loại cũ
+    });
 
     try {
       bool success = false;
+      Map<String, dynamic>? predictRes;
+      String? genre;
 
+      // ✅ Upload và gọi AI
       if (kIsWeb) {
         success = await ApiService.uploadSongWeb(
           title,
           selectedBytes ?? Uint8List(0),
           fileName ?? 'audio.mp3',
         );
+
+        if (success) {
+          predictRes = await ApiService.predictGenreWeb(
+            selectedBytes ?? Uint8List(0),
+            fileName ?? 'audio.mp3',
+          );
+          genre = predictRes?['genre'];
+        }
       } else {
         if (selectedFile == null || !await selectedFile!.exists()) {
           Get.snackbar(
@@ -100,20 +116,29 @@ class _UploadMusicPageState extends State<UploadMusicPage> {
           );
           return;
         }
+
         success = await ApiService.uploadSong(title, selectedFile!.path);
+
+        if (success) {
+          predictRes = await ApiService.predictGenre(selectedFile!.path ?? '');
+          genre = predictRes?['genre'];
+        }
       }
 
+      // ✅ Xử lý phản hồi
       if (success) {
         Get.snackbar(
           "✅ Thành công",
-          "Tải bài hát lên thành công!",
+          "Tải bài hát lên thành công! ${genre != null ? "Thể loại: $genre" : ""}",
           snackPosition: SnackPosition.BOTTOM,
         );
+
         setState(() {
           titleController.clear();
           selectedFile = null;
           selectedBytes = null;
           fileName = null;
+          predictedGenre = genre;
         });
       } else {
         Get.snackbar(
@@ -142,14 +167,9 @@ class _UploadMusicPageState extends State<UploadMusicPage> {
         title: const Text("Tải nhạc lên"),
         backgroundColor: theme.colorScheme.surface,
         centerTitle: true,
-        // THÊM: Sử dụng `leading` để thay thế nút back mặc định
         leading: IconButton(
-          // Icon chevron left, giống như trong hình
           icon: const Icon(Icons.chevron_left, size: 30),
-          onPressed: () {
-            // Sử dụng Get.back() vì ứng dụng đang dùng thư viện GetX
-            Get.back();
-          },
+          onPressed: () => Get.back(),
         ),
       ),
       body: Padding(
@@ -164,7 +184,7 @@ class _UploadMusicPageState extends State<UploadMusicPage> {
               ),
               const SizedBox(height: 30),
 
-              // Nhập tiêu đề
+              // Tiêu đề bài hát
               TextField(
                 controller: titleController,
                 decoration: InputDecoration(
@@ -176,7 +196,7 @@ class _UploadMusicPageState extends State<UploadMusicPage> {
               ),
               const SizedBox(height: 20),
 
-              // Nút chọn file
+              // Chọn file
               ElevatedButton.icon(
                 onPressed: pickFile,
                 icon: const Icon(Icons.attach_file),
@@ -194,16 +214,14 @@ class _UploadMusicPageState extends State<UploadMusicPage> {
               ),
               const SizedBox(height: 10),
 
-              // Nếu có file, hiển thị thêm kích thước
               if (selectedBytes != null || selectedFile != null)
                 Text(
                   "📁 ${fileName ?? selectedFile!.path.split('/').last}",
                   style: const TextStyle(fontSize: 14),
                 ),
-
               const SizedBox(height: 20),
 
-              // Nút upload
+              // Upload button
               ElevatedButton.icon(
                 onPressed: isUploading ? null : uploadMusic,
                 icon: isUploading
@@ -221,6 +239,19 @@ class _UploadMusicPageState extends State<UploadMusicPage> {
                   ),
                 ),
               ),
+
+              // ✅ Thể loại AI
+              if (predictedGenre != null) ...[
+                const SizedBox(height: 25),
+                Text(
+                  "🎧 Thể loại dự đoán: $predictedGenre",
+                  style: const TextStyle(
+                    fontSize: 16,
+                    fontWeight: FontWeight.bold,
+                    color: Colors.blueAccent,
+                  ),
+                ),
+              ],
             ],
           ),
         ),
